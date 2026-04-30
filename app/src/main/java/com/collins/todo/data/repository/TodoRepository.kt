@@ -1,0 +1,55 @@
+package com.collins.todo.data.repository
+
+import com.collins.todo.data.Models.Todo
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
+
+class TodoRepository : TodoService {
+    val supabase = createSupabaseClient(
+        supabaseUrl = "https://aoxvkohxjfowuctnntam.supabase.co",
+        supabaseKey = "sb_publishable_vH_aqHDuNt0_VuG_HFx88w_GtXKoivB"
+    ) {
+        install(Postgrest)
+    }
+
+    override suspend fun createTask(todo: Todo): Todo? {
+        val task = supabase.from("tasks").insert(todo) {
+            select()
+        }.decodeSingleOrNull<Todo>()
+        return task
+    }
+
+    override suspend fun getAllTasks(): List<Todo> {
+        val tasks = supabase.from("tasks").select().decodeList<Todo>()
+        return tasks
+    }
+
+    override suspend fun getTask(id: Int): Todo? {
+        val todo = supabase.from("tasks").select {
+            filter {
+                eq("id", id)
+            }
+        }.decodeAsOrNull<Todo>()
+        return todo
+    }
+
+    override suspend fun updateTask(todo: Todo): Todo? {
+        val updatedTodo = supabase.from("tasks").update(todo) {
+            select()
+            filter {
+                eq("id", todo.id!!)
+            }
+        }.decodeSingleOrNull<Todo>()
+        return updatedTodo
+    }
+
+    override suspend fun deleteTask(id: Int): Boolean {
+        supabase.from("tasks").delete {
+            filter {
+                eq("id", id)
+            }
+        }
+        return getTask(id) == null
+    }
+}
