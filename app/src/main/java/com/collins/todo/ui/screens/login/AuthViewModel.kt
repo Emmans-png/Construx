@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 class AuthViewModel : ViewModel() {
     var email by mutableStateOf("")
     var password by mutableStateOf("")
-    var confirmPassword by mutableStateOf("")
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
     var isSuccess by mutableStateOf(false)
@@ -37,10 +36,6 @@ class AuthViewModel : ViewModel() {
     }
 
     fun signUp(onSuccess: () -> Unit) {
-        if (password != confirmPassword) {
-            errorMessage = "Passwords do not match"
-            return
-        }
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
