@@ -19,8 +19,8 @@ lifecycleViewmodelCompose = "2.10.0"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
-auth-kt = { module = "io.github.jan.supabase:gotrue-kt" }
-bom = { module = "io.github.jan.supabase:bom", version.ref = "bom" }
+auth-kt = { module = "io.github.jan-tennert.supabase:auth-kt" }
+bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "bom" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilNetworkOkhttp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -37,9 +37,9 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktorClientAndroid" }
-realtime-kt = { module = "io.github.jan.supabase:realtime-kt" }
-postgrest-kt = { module = "io.github.jan.supabase:postgrest-kt" }
-storage-kt = { module = "io.github.jan.supabase:storage-kt" }
+realtime-kt = { module = "io.github.jan-tennert.supabase:realtime-kt" }
+postgrest-kt = { module = "io.github.jan-tennert.supabase:postgrest-kt" }
+storage-kt = { module = "io.github.jan-tennert.supabase:storage-kt" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
