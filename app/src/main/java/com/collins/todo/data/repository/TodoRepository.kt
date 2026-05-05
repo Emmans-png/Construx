@@ -1,17 +1,11 @@
 package com.collins.todo.data.repository
 
 import com.collins.todo.data.Models.Todo
-import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
 class TodoRepository : TodoService {
-    val supabase = createSupabaseClient(
-        supabaseUrl = "https://aoxvkohxjfowuctnntam.supabase.co",
-        supabaseKey = "sb_publishable_vH_aqHDuNt0_VuG_HFx88w_GtXKoivB"
-    ) {
-        install(Postgrest)
-    }
+    val supabase = SupabaseClient.client
 
     override suspend fun createTask(todo: Todo): Todo? {
         val task = supabase.from("tasks").insert(todo) {
