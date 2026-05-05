@@ -9,6 +9,7 @@ import com.collins.todo.data.repository.TodoRepository
 import kotlinx.coroutines.launch
 
 class TodoVIewModel : ViewModel() {
+
     private val repository = TodoRepository()
 
     private val _title = mutableStateOf("")
