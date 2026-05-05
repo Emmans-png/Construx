@@ -11,33 +11,68 @@ import com.collins.todo.ui.screens.home.HomeScreen
 import com.collins.todo.ui.screens.home.HomeViewModel
 import com.collins.todo.ui.screens.todoform.TodoForm
 import com.collins.todo.ui.screens.todoform.TodoVIewModel
-
-sealed class Screen(val route: String) {
-    object Home : Screen("home")
-    object TodoForm : Screen("todo_form?todoId={todoId}") {
-        fun createRoute(todoId: Int? = null) = if (todoId != null) "todo_form?todoId=$todoId" else "todo_form"
-    }
-}
+import com.collins.todo.ui.screens.login.LoginScreen
+import com.collins.todo.ui.screens.login.AuthViewModel
+import com.collins.todo.ui.screens.signup.RegisterScreen
+import com.collins.todo.ui.screens.forgotpassword.ForgotScreen
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = Screen.Home.route) {
-        composable(Screen.Home.route) {
+    NavHost(navController = navController, startDestination = ROUTES.LOGIN) {
+        composable(ROUTES.LOGIN) {
+            LoginScreen(
+                viewModel = authViewModel,
+                onNavigateToRegister = {
+                    navController.navigate(ROUTES.REGISTER)
+                },
+                onNavigateToForgot = {
+                    navController.navigate(ROUTES.FORGOT_PASSWORD)
+                },
+                onLoginSuccess = {
+                    navController.navigate(ROUTES.HOME) {
+                        popUpTo(ROUTES.LOGIN) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(ROUTES.REGISTER) {
+            RegisterScreen(
+                viewModel = authViewModel,
+                onNavigateToLogin = {
+                    navController.popBackStack()
+                },
+                onSignUpSuccess = {
+                    navController.navigate(ROUTES.HOME) {
+                        popUpTo(ROUTES.LOGIN) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(ROUTES.FORGOT_PASSWORD) {
+            ForgotScreen(
+                viewModel = authViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(ROUTES.HOME) {
             val homeViewModel: HomeViewModel = viewModel()
             HomeScreen(
                 homeViewModel = homeViewModel,
                 onAddTodo = {
-                    navController.navigate(Screen.TodoForm.createRoute())
+                    navController.navigate(ROUTES.createTodoFormRoute())
                 },
                 onEditTodo = { todoId ->
-                    navController.navigate(Screen.TodoForm.createRoute(todoId))
+                    navController.navigate(ROUTES.createTodoFormRoute(todoId))
                 }
             )
         }
         composable(
-            route = Screen.TodoForm.route,
+            route = ROUTES.TODO_FORM,
             arguments = listOf(
                 navArgument("todoId") {
                     type = NavType.IntType
