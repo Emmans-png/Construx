@@ -79,8 +79,27 @@ fun RegisterScreen(
                 shape = RoundedCornerShape(4.dp)
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
+            TextField(
+                value = viewModel.confirmPassword,
+                onValueChange = { viewModel.confirmPassword = it },
+                label = { Text("Confirm Password", color = MaterialTheme.colorScheme.tertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(4.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
             if (viewModel.errorMessage != null) {
                 Text(
                     text = viewModel.errorMessage!!,
