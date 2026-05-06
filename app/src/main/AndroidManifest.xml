@@ -13,14 +13,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.App.Starting">
-        <service
-            android:name=".data.repository.ToDoService"
-            android:exported="false"></service>
-        <service
-            android:name=".data.repository.TodoService"
-            android:enabled="true"
-            android:exported="true" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,8 +20,15 @@
             android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep Link for Supabase Email Confirmation -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="todoapp" android:host="confirm" />
             </intent-filter>
         </activity>
     </application>

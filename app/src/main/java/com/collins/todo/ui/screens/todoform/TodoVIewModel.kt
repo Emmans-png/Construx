@@ -8,7 +8,7 @@ import com.collins.todo.data.Models.Todo
 import com.collins.todo.data.repository.TodoRepository
 import kotlinx.coroutines.launch
 
-class TodoVIewModel : ViewModel() {
+class TodoViewModel : ViewModel() {
 
     private val repository = TodoRepository()
 
@@ -29,15 +29,36 @@ class TodoVIewModel : ViewModel() {
 
     fun onTitleChange(newTitle: String) {
         _title.value = newTitle
+        fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
     }
+}
 
     fun onDescriptionChange(newDescription: String) {
         _description.value = newDescription
+        fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
     }
+}
 
     fun onDueDateChange(newDate: Long) {
         _dueDate.value = newDate
+        fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
     }
+}
 
     fun saveTodo(id: Int? = null) {
         viewModelScope.launch {
@@ -53,17 +74,66 @@ class TodoVIewModel : ViewModel() {
                 )
                 if (id == null) {
                     repository.createTask(todo)
-                } else {
-                    repository.updateTask(todo)
-                }
-                _saveSuccess.value = true
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isSaving.value = false
-            }
-        }
+                    fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
     }
+} else {
+                    repository.updateTask(todo)
+                    fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+                _saveSuccess.value = true
+                fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+} catch (e: Exception) {
+                e.printStackTrace()
+                fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+} finally {
+                _isSaving.value = false
+                fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+            fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+        fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
 
     fun loadTodo(id: Int) {
         viewModelScope.launch {
@@ -73,10 +143,52 @@ class TodoVIewModel : ViewModel() {
                     _title.value = it.title
                     _description.value = it.description
                     _dueDate.value = it.dueDate
-                }
-            } catch (e: Exception) {
+                    fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+                fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+} catch (e: Exception) {
                 e.printStackTrace()
-            }
-        }
+                fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+            fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+        fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
+    }
+}
+    fun clearState() {
+        _title.value = ""
+        _description.value = ""
+        _dueDate.value = System.currentTimeMillis()
+        _isSaving.value = false
+        _saveSuccess.value = false
     }
 }

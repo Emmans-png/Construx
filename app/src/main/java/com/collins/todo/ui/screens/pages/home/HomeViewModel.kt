@@ -1,4 +1,4 @@
-package com.collins.todo.ui.screens.home
+package com.collins.todo.ui.screens.pages.home
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf

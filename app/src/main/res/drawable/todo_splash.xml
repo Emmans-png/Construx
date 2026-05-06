@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="120dp"
+    android:viewportWidth="200"
+    android:viewportHeight="120">
+
+    <!-- Stylized "TODO" text only - Redesigned to fit better in the center -->
+    <!-- T -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M25,35 h30 v10 h-10 v25 h-10 v-25 h-10 Z" />
+
+    <!-- O -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M65,35 h20 c5,0 10,5 10,10 v15 c0,5 -5,10 -10,10 h-20 c-5,0 -10,-5 -10,-10 v-15 c0,-5 5,-10 10,-10 Z M65,45 v15 h20 v-15 h-20 Z" />
+
+    <!-- D -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M105,35 h20 c10,0 15,5 15,15 v5 c0,10 -5,15 -15,15 h-20 Z M115,45 v15 h10 c5,0 5,-5 5,-5 v-5 c0,0 0,-5 -5,-5 Z" />
+
+    <!-- O -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M150,35 h20 c5,0 10,5 10,10 v15 c0,5 -5,10 -10,10 h-20 c-5,0 -10,-5 -10,-10 v-15 c0,-5 5,-10 10,-10 Z M150,45 v15 h20 v-15 h-20 Z" />
+
+</vector>

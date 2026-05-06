@@ -1,18 +1,23 @@
-package com.collins.todo.ui.screens.signup
+package com.collins.todo.ui.screens.authentication.signup
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.collins.todo.ui.screens.login.AuthViewModel
+import com.collins.todo.ui.screens.authentication.login.AuthViewModel
 
 @Composable
 fun RegisterScreen(
@@ -20,6 +25,9 @@ fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
     onSignUpSuccess: () -> Unit
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -33,6 +41,15 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
+                text = "TODO",
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = (-2).sp,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+
+            Text(
                 text = "Sign Up",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -41,6 +58,25 @@ fun RegisterScreen(
             )
             
             Spacer(modifier = Modifier.height(32.dp))
+
+            TextField(
+                value = viewModel.username,
+                onValueChange = { viewModel.username = it },
+                label = { Text("Username", color = MaterialTheme.colorScheme.tertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
             
             TextField(
                 value = viewModel.email,
@@ -66,7 +102,16 @@ fun RegisterScreen(
                 onValueChange = { viewModel.password = it },
                 label = { Text("Password", color = MaterialTheme.colorScheme.tertiary) },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -86,7 +131,16 @@ fun RegisterScreen(
                 onValueChange = { viewModel.confirmPassword = it },
                 label = { Text("Confirm Password", color = MaterialTheme.colorScheme.tertiary) },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                        Icon(
+                            imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -103,9 +157,10 @@ fun RegisterScreen(
             if (viewModel.errorMessage != null) {
                 Text(
                     text = viewModel.errorMessage!!,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (viewModel.isSuccess) Color.Green else MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    textAlign = TextAlign.Center
                 )
             }
             

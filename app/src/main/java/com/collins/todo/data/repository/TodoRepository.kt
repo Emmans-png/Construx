@@ -1,6 +1,7 @@
 package com.collins.todo.data.repository
 
 import com.collins.todo.data.Models.Todo
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
@@ -8,14 +9,21 @@ class TodoRepository : TodoService {
     val supabase = SupabaseClient.client
 
     override suspend fun createTask(todo: Todo): Todo? {
-        val task = supabase.from("tasks").insert(todo) {
+        val user = supabase.auth.currentUserOrNull() ?: return null
+        val todoWithUser = todo.copy(userId = user.id)
+        val task = supabase.from("tasks").insert(todoWithUser) {
             select()
         }.decodeSingleOrNull<Todo>()
         return task
     }
 
     override suspend fun getAllTasks(): List<Todo> {
-        val tasks = supabase.from("tasks").select().decodeList<Todo>()
+        val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        val tasks = supabase.from("tasks").select {
+            filter {
+                eq("userId", user.id)
+            }
+        }.decodeList<Todo>()
         return tasks
     }
 
