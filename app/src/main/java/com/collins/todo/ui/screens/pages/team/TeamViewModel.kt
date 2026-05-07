@@ -1,31 +1,31 @@
-package com.collins.todo.ui.screens.pages.home
+package com.collins.todo.ui.screens.pages.team
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.collins.todo.data.Models.ConstructionProject
+import com.collins.todo.data.Models.TeamMember
 import com.collins.todo.data.repository.ConstructionRepository
 import kotlinx.coroutines.launch
 
-class HomeViewModel: ViewModel() {
+class TeamViewModel : ViewModel() {
     private val repository = ConstructionRepository()
 
-    private val _projects = mutableStateOf<List<ConstructionProject>>(emptyList())
-    val projects: State<List<ConstructionProject>> = _projects
+    private val _teamMembers = mutableStateOf<List<TeamMember>>(emptyList())
+    val teamMembers: State<List<TeamMember>> = _teamMembers
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
     init {
-        fetchProjects()
+        fetchTeam()
     }
 
-    fun fetchProjects() {
+    fun fetchTeam() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _projects.value = repository.getProjects()
+                _teamMembers.value = repository.getTeam()
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -34,13 +34,21 @@ class HomeViewModel: ViewModel() {
         }
     }
 
-    fun deleteProject(projectId: Int) {
+    fun addTeamMember(name: String, role: String, phoneNumber: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
+            _isLoading.value = true
             try {
-                repository.deleteProject(projectId)
-                fetchProjects() // Refresh list
+                val result = repository.addTeamMember(
+                    TeamMember(name = name, role = role, phoneNumber = phoneNumber)
+                )
+                if (result != null) {
+                    fetchTeam()
+                    onSuccess()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

@@ -8,12 +8,19 @@ import androidx.lifecycle.viewModelScope
 import com.collins.todo.data.repository.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 class AuthViewModel : ViewModel() {
+    var organizationName by mutableStateOf("")
+    var organizationId by mutableStateOf("")
+    var industryType by mutableStateOf("Shelter/Construction")
+    var location by mutableStateOf("")
+    var role by mutableStateOf("") // "Transporter" or "Manager"
     var username by mutableStateOf("")
+    var phoneNumber by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var confirmPassword by mutableStateOf("")
@@ -68,20 +75,47 @@ class AuthViewModel : ViewModel() {
             isLoading = true
             errorMessage = null
             try {
-                SupabaseClient.client.auth.signUpWith(Email) {
+                // Sign up in Auth
+                val authResponse = SupabaseClient.client.auth.signUpWith(Email) {
                     this.email = trimmedEmail
                     this.password = trimmedPassword
                     this.data = buildJsonObject {
                         put("username", trimmedUsername)
+                        put("organization_name", organizationName.trim())
+                        put("organization_id", organizationId)
+                        put("industry_type", industryType)
+                        put("location", location.trim())
+                        put("role", role)
+                        put("phone_number", phoneNumber.trim())
                     }
                 }
+                
                 isSuccess = true
-                val session = SupabaseClient.client.auth.currentSessionOrNull()
-                if (session != null) {
-                    onSuccess()
-                } else {
-                    errorMessage = "Signup successful! Please check your email to confirm your account."
+                val userId = authResponse?.id // Get ID directly from response
+                
+                if (userId != null) {
+                    // Try to sync to profiles table
+                    try {
+                        SupabaseClient.client.from("profiles").upsert(
+                            buildJsonObject {
+                                put("id", userId)
+                                put("username", trimmedUsername)
+                                put("email", trimmedEmail)
+                                put("organization_name", organizationName.trim())
+                                put("organization_id", organizationId)
+                                put("industry_type", industryType)
+                                put("location", location.trim())
+                                put("role", role)
+                                put("phone_number", phoneNumber.trim())
+                            }
+                        )
+                    } catch (e: Exception) {
+                        println("Profile Sync Error: ${e.message}")
+                        e.printStackTrace()
+                    }
                 }
+
+                onSuccess()
             } catch (e: Exception) {
                 e.printStackTrace()
                 val msg = e.message ?: ""
@@ -131,9 +165,24 @@ class AuthViewModel : ViewModel() {
         errorMessage = null
         isSuccess = false
         isLoading = false
+        organizationName = ""
+        organizationId = ""
+        industryType = "Shelter/Construction"
+        location = ""
+        role = ""
         username = ""
+        phoneNumber = ""
         email = ""
         password = ""
         confirmPassword = ""
+    }
+
+    fun getUserRole(): String {
+        // Try to get role from local state first (set during signup)
+        if (role.isNotBlank()) return role
+        
+        // Fallback to user metadata
+        val user = SupabaseClient.client.auth.currentUserOrNull()
+        return user?.userMetadata?.get("role")?.toString()?.removeSurrounding("\"") ?: "Manager"
     }
 }

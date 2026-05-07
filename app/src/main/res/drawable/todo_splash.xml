@@ -4,7 +4,7 @@
     android:viewportWidth="200"
     android:viewportHeight="120">
 
-    <!-- Stylized "TODO" text only - Redesigned to fit better in the center -->
+    <!-- Stylized "CONSTRUX" logo placeholder -->
     <!-- T -->
     <path
         android:fillColor="#E50914"

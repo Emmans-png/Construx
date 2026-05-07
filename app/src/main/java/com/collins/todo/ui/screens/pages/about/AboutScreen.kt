@@ -27,7 +27,7 @@ fun AboutScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "ABOUT TODO",
+                        "CONSTRUX SUITE",
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -65,7 +65,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "Version 1.0.0",
+                text = "Construx Suite v3.0",
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -79,7 +79,7 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "ToDo is a simple and elegant task management app built with Jetpack Compose and Supabase. Keep track of your daily tasks with ease and stay productive.",
+                    text = "A specialized ERP for Real Estate Developers. Features include Stage-Gate Procurement (link material orders to foundation/roofing stages) and high-level ROI Simulators for calculating property break-even points and burn-rates.",
                     color = MaterialTheme.colorScheme.tertiary,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center,

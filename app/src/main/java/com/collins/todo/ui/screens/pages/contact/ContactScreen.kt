@@ -67,7 +67,7 @@ fun ContactScreen(
             ContactItem(
                 icon = Icons.Default.Email,
                 label = "Email",
-                value = "support@todo.app"
+                value = "support@construx.app"
             )
             
             Spacer(modifier = Modifier.height(16.dp))

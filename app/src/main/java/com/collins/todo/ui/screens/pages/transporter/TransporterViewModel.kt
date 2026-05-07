@@ -1,46 +1,35 @@
-package com.collins.todo.ui.screens.pages.home
+package com.collins.todo.ui.screens.pages.transporter
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.collins.todo.data.Models.ConstructionProject
+import com.collins.todo.data.Models.MaterialOrder
 import com.collins.todo.data.repository.ConstructionRepository
 import kotlinx.coroutines.launch
 
-class HomeViewModel: ViewModel() {
+class TransporterViewModel : ViewModel() {
     private val repository = ConstructionRepository()
 
-    private val _projects = mutableStateOf<List<ConstructionProject>>(emptyList())
-    val projects: State<List<ConstructionProject>> = _projects
+    private val _orders = mutableStateOf<List<MaterialOrder>>(emptyList())
+    val orders: State<List<MaterialOrder>> = _orders
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
     init {
-        fetchProjects()
+        fetchOrders()
     }
 
-    fun fetchProjects() {
+    fun fetchOrders() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _projects.value = repository.getProjects()
+                _orders.value = repository.getTransporterOrders()
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
-            }
-        }
-    }
-
-    fun deleteProject(projectId: Int) {
-        viewModelScope.launch {
-            try {
-                repository.deleteProject(projectId)
-                fetchProjects() // Refresh list
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }

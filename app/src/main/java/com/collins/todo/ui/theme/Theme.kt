@@ -26,7 +26,7 @@ private val NetflixColorScheme = darkColorScheme(
 )
 
 @Composable
-fun ToDoTheme(
+fun ConstruxTheme(
     darkTheme: Boolean = true, // Force dark theme for Netflix look
     content: @Composable () -> Unit
 ) {

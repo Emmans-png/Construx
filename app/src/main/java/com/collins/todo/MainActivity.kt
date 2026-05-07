@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.collins.todo.ui.screens.navigation.AppNavigation
-import com.collins.todo.ui.theme.ToDoTheme
+import com.collins.todo.ui.theme.ConstruxTheme
 
 
 
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ToDoTheme {
+            ConstruxTheme {
                 AppNavigation()
             }
         }

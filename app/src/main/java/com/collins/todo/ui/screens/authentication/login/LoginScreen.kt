@@ -39,7 +39,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "TODO",
+                text = "CONSTRUX",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary,
@@ -149,7 +149,7 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("New to ToDo?", color = MaterialTheme.colorScheme.tertiary)
+                Text("New to Construx?", color = MaterialTheme.colorScheme.tertiary)
                 TextButton(onClick = onNavigateToRegister) {
                     Text("Sign up now.", color = Color.White, fontWeight = FontWeight.Bold)
                 }

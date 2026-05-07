@@ -1,0 +1,77 @@
+package com.collins.todo.data.repository
+
+import com.collins.todo.data.Models.ConstructionProject
+import com.collins.todo.data.Models.MaterialOrder
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+
+class ConstructionRepository {
+    private val supabase = SupabaseClient.client
+
+    // Project methods
+    suspend fun getProjects(): List<ConstructionProject> {
+        val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        return supabase.from("construction_projects").select {
+            filter { eq("user_id", user.id) }
+        }.decodeList<ConstructionProject>()
+    }
+
+    suspend fun getProjectById(projectId: Int): ConstructionProject? {
+        return supabase.from("construction_projects").select {
+            filter { eq("id", projectId) }
+        }.decodeSingleOrNull<ConstructionProject>()
+    }
+
+    suspend fun createProject(project: ConstructionProject): ConstructionProject? {
+        val user = supabase.auth.currentUserOrNull() ?: return null
+        return supabase.from("construction_projects").insert(project.copy(userId = user.id)) {
+            select()
+        }.decodeSingleOrNull<ConstructionProject>()
+    }
+
+    suspend fun updateProject(project: ConstructionProject): ConstructionProject? {
+        return supabase.from("construction_projects").update(project) {
+            filter { eq("id", project.id ?: return null) }
+            select()
+        }.decodeSingleOrNull<ConstructionProject>()
+    }
+
+    suspend fun deleteProject(projectId: Int) {
+        supabase.from("construction_projects").delete {
+            filter { eq("id", projectId) }
+        }
+    }
+
+    // Material methods
+    suspend fun getOrdersByProject(projectId: Int): List<MaterialOrder> = 
+        supabase.from("material_orders").select {
+            filter { eq("project_id", projectId) }
+        }.decodeList<MaterialOrder>()
+
+    suspend fun createMaterialOrder(order: MaterialOrder): MaterialOrder? = 
+        supabase.from("material_orders").insert(order) {
+            select()
+        }.decodeSingleOrNull<MaterialOrder>()
+
+    suspend fun getTransporterOrders(): List<MaterialOrder> {
+        val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        return supabase.from("material_orders").select {
+            filter { eq("transporter_id", user.id) }
+        }.decodeList<MaterialOrder>()
+    }
+
+    // Team methods
+    suspend fun getTeam(): List<com.collins.todo.data.Models.TeamMember> {
+        val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        return supabase.from("team_members").select {
+            filter { eq("manager_id", user.id) }
+        }.decodeList<com.collins.todo.data.Models.TeamMember>()
+    }
+
+    suspend fun addTeamMember(member: com.collins.todo.data.Models.TeamMember): com.collins.todo.data.Models.TeamMember? {
+        val user = supabase.auth.currentUserOrNull() ?: return null
+        return supabase.from("team_members").insert(member.copy(managerId = user.id)) {
+            select()
+        }.decodeSingleOrNull<com.collins.todo.data.Models.TeamMember>()
+    }
+}

@@ -41,7 +41,7 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "TODO",
+                text = "CONSTRUX",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary,
@@ -63,6 +63,25 @@ fun RegisterScreen(
                 value = viewModel.username,
                 onValueChange = { viewModel.username = it },
                 label = { Text("Username", color = MaterialTheme.colorScheme.tertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextField(
+                value = viewModel.phoneNumber,
+                onValueChange = { viewModel.phoneNumber = it },
+                label = { Text("Phone Number", color = MaterialTheme.colorScheme.tertiary) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,

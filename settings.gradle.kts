@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ToDo"
+rootProject.name = "Construx"
 include(":app")
