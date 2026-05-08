@@ -57,9 +57,17 @@ class HomeViewModel: ViewModel() {
             fetchOrders()
         }.launchIn(viewModelScope)
 
+        val profileChannel = SupabaseClient.client.channel("profiles_sync")
+        profileChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "profiles"
+        }.onEach {
+            fetchDrivers()
+        }.launchIn(viewModelScope)
+
         viewModelScope.launch {
             projectChannel.subscribe()
             orderChannel.subscribe()
+            profileChannel.subscribe()
         }
     }
 

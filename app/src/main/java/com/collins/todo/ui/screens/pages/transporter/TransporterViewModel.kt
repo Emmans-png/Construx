@@ -10,6 +10,7 @@ import com.collins.todo.data.Models.MaterialOrder
 import com.collins.todo.data.Models.UserProfile
 import com.collins.todo.data.repository.ConstructionRepository
 import com.collins.todo.data.repository.SupabaseClient
+import com.collins.todo.ui.screens.authentication.login.AuthViewModel
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
@@ -131,13 +132,19 @@ class TransporterViewModel : ViewModel() {
         }
     }
 
-    fun updateVehicleHealth(fuel: Int, serviceKm: Int) {
+    fun updateVehicleHealth(authViewModel: AuthViewModel, fuel: Int, serviceKm: Int, plate: String? = null, model: String? = null) {
         viewModelScope.launch {
             try {
                 val currentProfile = repository.getUserProfile()
                 if (currentProfile != null) {
-                    val updated = currentProfile.copy(fuelLevel = fuel, nextServiceKm = serviceKm)
+                    val updated = currentProfile.copy(
+                        fuelLevel = fuel, 
+                        nextServiceKm = serviceKm,
+                        vehiclePlate = plate ?: currentProfile.vehiclePlate,
+                        vehicleModel = model ?: currentProfile.vehicleModel
+                    )
                     repository.updateUserProfile(updated)
+                    authViewModel.fetchProfile() // Refresh the global state
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -145,7 +152,7 @@ class TransporterViewModel : ViewModel() {
         }
     }
 
-    fun updateVehicleDetails() {
+    fun updateVehicleDetails(authViewModel: AuthViewModel) {
         viewModelScope.launch {
             try {
                 val currentProfile = repository.getUserProfile()
@@ -154,10 +161,18 @@ class TransporterViewModel : ViewModel() {
                         vehiclePlate = vehiclePlate,
                         vehicleModel = vehicleModel
                     )
-                    repository.updateUserProfile(updated)
-                    showVehicleSetupDialog = false
+                    println("Attempting to save vehicle: Plate=$vehiclePlate, Model=$vehicleModel")
+                    val result = repository.updateUserProfile(updated)
+                    if (result != null) {
+                        println("Vehicle details saved successfully!")
+                        authViewModel.fetchProfile()
+                        showVehicleSetupDialog = false
+                    } else {
+                        println("Failed to save: Repository returned null")
+                    }
                 }
             } catch (e: Exception) {
+                println("ERROR saving vehicle details: ${e.message}")
                 e.printStackTrace()
             }
         }

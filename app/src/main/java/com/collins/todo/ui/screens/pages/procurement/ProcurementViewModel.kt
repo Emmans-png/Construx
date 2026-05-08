@@ -53,6 +53,9 @@ class ProcurementViewModel : ViewModel() {
     var requiredStage by mutableStateOf("Foundation")
     var projects = mutableStateOf<List<ConstructionProject>>(emptyList())
         private set
+    
+    var statusMessage by mutableStateOf<String?>(null)
+    var isSaving by mutableStateOf(false)
 
     init {
         fetchOrders()
@@ -122,29 +125,55 @@ class ProcurementViewModel : ViewModel() {
     }
 
     fun createOrder() {
-        val project = selectedProjectIdForNewOrder?.let { id -> projects.value.find { it.id == id } } 
-            ?: projects.value.firstOrNull() ?: return
-        if (materialName.isBlank()) return
+        val project = if (selectedProjectIdForNewOrder != null) {
+            projects.value.find { it.id == selectedProjectIdForNewOrder }
+        } else {
+            projects.value.firstOrNull()
+        }
+
+        if (project == null) {
+            statusMessage = "Error: No project selected"
+            return
+        }
+        
+        if (materialName.isBlank()) {
+            statusMessage = "Error: Material name is required"
+            return
+        }
 
         viewModelScope.launch {
+            isSaving = true
+            statusMessage = "Saving order..."
             try {
-                repository.createMaterialOrder(
-                    MaterialOrder(
-                        projectId = project.id!!,
-                        materialName = materialName,
-                        quantity = quantity.toDoubleOrNull() ?: 0.0,
-                        unit = "Units",
-                        unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
-                        requiredStage = requiredStage,
-                        supplierName = supplier,
-                        status = "Pending",
-                        organizationId = project.organizationId
-                    )
+                val orgId = project.organizationId
+                val newOrder = MaterialOrder(
+                    projectId = project.id!!,
+                    materialName = materialName,
+                    quantity = quantity.toDoubleOrNull() ?: 0.0,
+                    unit = "Units",
+                    unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
+                    requiredStage = requiredStage,
+                    supplierName = supplier,
+                    status = "Pending",
+                    organizationId = orgId
                 )
-                fetchOrders()
-                onDismissAddOrder()
+                
+                println("VM_ACTION: Inserting order with OrgID: $orgId")
+                val result = repository.createMaterialOrder(newOrder)
+                
+                if (result != null) {
+                    statusMessage = "Order created successfully!"
+                    fetchOrders()
+                    kotlinx.coroutines.delay(1000)
+                    onDismissAddOrder()
+                } else {
+                    statusMessage = "Failed to save order. Check database permissions."
+                }
             } catch (e: Exception) {
+                statusMessage = "Error: ${e.message}"
                 e.printStackTrace()
+            } finally {
+                isSaving = false
             }
         }
     }

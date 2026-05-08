@@ -322,12 +322,33 @@ fun AddOrderDialog(
             }
         },
         confirmButton = {
-            Button(
-                enabled = (viewModel.selectedProjectIdForNewOrder != null || viewModel.projects.value.isNotEmpty()) && viewModel.materialName.isNotBlank(),
-                onClick = { viewModel.createOrder() }
-            ) { Text("Add Order") }
+            Column(horizontalAlignment = Alignment.End) {
+                viewModel.statusMessage?.let {
+                    Text(
+                        it, 
+                        color = if (it.startsWith("Error") || it.startsWith("Failed")) Color.Red else Color.Green,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                Button(
+                    enabled = !viewModel.isSaving && (viewModel.selectedProjectIdForNewOrder != null || viewModel.projects.value.isNotEmpty()) && viewModel.materialName.isNotBlank(),
+                    onClick = { viewModel.createOrder() }
+                ) { 
+                    if (viewModel.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("Add Order") 
+                }
+            }
         },
-        dismissButton = { TextButton(onClick = { viewModel.onDismissAddOrder() }) { Text("Cancel") } }
+        dismissButton = { 
+            TextButton(
+                enabled = !viewModel.isSaving,
+                onClick = { viewModel.onDismissAddOrder() }
+            ) { Text("Cancel") } 
+        }
     )
 }
 

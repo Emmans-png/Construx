@@ -202,7 +202,7 @@ fun AppNavigation() {
         }
         composable(ROUTES.TRANSPORTER_HOME) {
             val transporterViewModel: TransporterViewModel = viewModel()
-            TransporterHomeScreen(
+            TransporterConsole(
                 viewModel = transporterViewModel,
                 authViewModel = authViewModel,
                 onLogout = {
@@ -213,7 +213,8 @@ fun AppNavigation() {
                 onNavigateToMessages = { navController.navigate(ROUTES.DRIVER_MESSAGES) },
                 onNavigateToTracking = { orderId: Int ->
                     navController.navigate("${ROUTES.TRACKING}/$orderId/false")
-                }
+                },
+                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) }
             )
         }
         composable(ROUTES.DRIVER_MESSAGES) {

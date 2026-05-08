@@ -59,6 +59,8 @@ fun ProfileScreen(
             viewModel.phoneNumber = it.phoneNumber ?: ""
             viewModel.organizationName = it.organizationName ?: ""
             viewModel.location = it.location ?: ""
+            viewModel.vehiclePlate = it.vehiclePlate ?: ""
+            viewModel.vehicleModel = it.vehicleModel ?: ""
         }
     }
 
@@ -84,6 +86,8 @@ fun ProfileScreen(
                                     phoneNumber = viewModel.phoneNumber,
                                     organizationName = viewModel.organizationName,
                                     location = viewModel.location,
+                                    vehiclePlate = viewModel.vehiclePlate,
+                                    vehicleModel = viewModel.vehicleModel,
                                     profilePictureUrl = profile?.profilePictureUrl
                                 )
                                 viewModel.updateProfile(updated) {
@@ -197,6 +201,13 @@ fun ProfileScreen(
                             Text("Organization", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
                             ProfileInfoItem("Company", viewModel.organizationName, Icons.Default.Business, viewModel.isEditing) { viewModel.organizationName = it }
                             ProfileInfoItem("Location", viewModel.location, Icons.Default.LocationOn, viewModel.isEditing) { viewModel.location = it }
+                        }
+
+                        if (profile?.role == "Transporter") {
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                            Text("Vehicle Details", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
+                            ProfileInfoItem("Vehicle Plate", viewModel.vehiclePlate, Icons.Default.LocalShipping, viewModel.isEditing) { viewModel.vehiclePlate = it }
+                            ProfileInfoItem("Vehicle Model", viewModel.vehicleModel, Icons.Default.Settings, viewModel.isEditing) { viewModel.vehicleModel = it }
                         }
                     }
                 }

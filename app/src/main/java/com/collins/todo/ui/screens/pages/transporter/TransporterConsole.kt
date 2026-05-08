@@ -1,9 +1,8 @@
 package com.collins.todo.ui.screens.pages.transporter
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -129,7 +128,8 @@ fun TransporterConsole(
                                     unitPrice = 0.0,
                                     status = "Ongoing",
                                     requiredStage = "Current",
-                                    supplierName = viewModel.supplier
+                                    supplierName = viewModel.supplier,
+                                    organizationId = authViewModel.currentUserProfile?.organizationId
                                 )
                             )
                             viewModel.material = ""; viewModel.quantity = ""; viewModel.projectSite = ""; viewModel.supplier = ""
@@ -151,14 +151,30 @@ fun TransporterConsole(
         LaunchedEffect(Unit) {
             viewModel.fuel = (authViewModel.currentUserProfile?.fuelLevel ?: 78).toString()
             viewModel.serviceKm = (authViewModel.currentUserProfile?.nextServiceKm ?: 1240).toString()
+            viewModel.vehiclePlate = authViewModel.currentUserProfile?.vehiclePlate ?: ""
+            viewModel.vehicleModel = authViewModel.currentUserProfile?.vehicleModel ?: ""
         }
 
         AlertDialog(
             onDismissRequest = { viewModel.showEditVehicleHealth = false },
-            title = { Text("Update Vehicle Health", color = Color.White) },
+            title = { Text("Update Vehicle Details", color = Color.White) },
             containerColor = MaterialTheme.colorScheme.surface,
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = viewModel.vehiclePlate,
+                        onValueChange = { viewModel.vehiclePlate = it },
+                        label = { Text("License Plate") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = viewModel.vehicleModel,
+                        onValueChange = { viewModel.vehicleModel = it },
+                        label = { Text("Model (e.g. Isuzu FSR)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
                     OutlinedTextField(
                         value = viewModel.fuel,
                         onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.fuel = it },
@@ -177,12 +193,51 @@ fun TransporterConsole(
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.updateVehicleHealth(viewModel.fuel.toIntOrNull() ?: 0, viewModel.serviceKm.toIntOrNull() ?: 0)
+                    viewModel.updateVehicleHealth(
+                        authViewModel = authViewModel,
+                        fuel = viewModel.fuel.toIntOrNull() ?: 0,
+                        serviceKm = viewModel.serviceKm.toIntOrNull() ?: 0,
+                        plate = viewModel.vehiclePlate,
+                        model = viewModel.vehicleModel
+                    )
                     viewModel.showEditVehicleHealth = false
                 }) { Text("Save Changes") }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.showEditVehicleHealth = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (viewModel.showVehicleSetupDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.showVehicleSetupDialog = false },
+            title = { Text("Vehicle Registration", color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Register the vehicle for this transport period.", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = viewModel.vehiclePlate,
+                        onValueChange = { viewModel.vehiclePlate = it },
+                        label = { Text("License Plate Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = viewModel.vehicleModel,
+                        onValueChange = { viewModel.vehicleModel = it },
+                        label = { Text("Vehicle Model (e.g. Isuzu FSR)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.updateVehicleDetails(authViewModel) }) { Text("Save Vehicle") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.showVehicleSetupDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -197,8 +252,11 @@ fun TransporterConsole(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToMessages) {
+                        Icon(Icons.AutoMirrored.Filled.Message, "Messages")
+                    }
                     IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Default.Person, "Profile")
+                        Icon(Icons.Default.AccountCircle, "Profile")
                     }
                     IconButton(onClick = { authViewModel.signOut(onLogout) }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, "Logout")
@@ -213,7 +271,11 @@ fun TransporterConsole(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 FloatingActionButton(
-                    onClick = { viewModel.showVehicleSetupDialog = true },
+                    onClick = { 
+                        viewModel.vehiclePlate = authViewModel.currentUserProfile?.vehiclePlate ?: ""
+                        viewModel.vehicleModel = authViewModel.currentUserProfile?.vehicleModel ?: ""
+                        viewModel.showVehicleSetupDialog = true 
+                    },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = Color.White,
                     shape = CircleShape
@@ -259,7 +321,7 @@ fun TransporterConsole(
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TransporterStatCard("Total Trips", "${orders.size}", Icons.Default.Route, Modifier.weight(1f))
-                        TransporterStatCard("Earnings", "$${String.format("%,.0f", orders.filter { it.status == "Delivered" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Modifier.weight(1f))
+                        TransporterStatCard("Earnings", "$${String.format(java.util.Locale.getDefault(), "%,.0f", orders.filter { it.status == "Delivered" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Modifier.weight(1f))
                     }
                 }
 
@@ -268,7 +330,7 @@ fun TransporterConsole(
                         ActiveLoadCard(
                             order = activeOrder,
                             onGetDirections = {
-                                val gmmIntentUri = Uri.parse("google.navigation:q=Project+Site+${activeOrder.projectId}")
+                                val gmmIntentUri = "google.navigation:q=Project+Site+${activeOrder.projectId}".toUri()
                                 val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                 mapIntent.setPackage("com.google.android.apps.maps")
                                 context.startActivity(mapIntent)
@@ -301,6 +363,8 @@ fun TransporterConsole(
                     VehicleStatusCard(
                         fuelLevel = authViewModel.currentUserProfile?.fuelLevel ?: 78,
                         serviceKm = authViewModel.currentUserProfile?.nextServiceKm ?: 1240,
+                        plate = authViewModel.currentUserProfile?.vehiclePlate,
+                        model = authViewModel.currentUserProfile?.vehicleModel,
                         onEdit = { viewModel.showEditVehicleHealth = true }
                     )
                 }
@@ -311,39 +375,6 @@ fun TransporterConsole(
 
                 item {
                     Text("Trip History", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                }
-                
-                if (viewModel.showVehicleSetupDialog) {
-                    AlertDialog(
-                        onDismissRequest = { viewModel.showVehicleSetupDialog = false },
-                        title = { Text("Vehicle Registration", color = Color.White) },
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Register the vehicle for this transport period.", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
-                                OutlinedTextField(
-                                    value = viewModel.vehiclePlate,
-                                    onValueChange = { viewModel.vehiclePlate = it },
-                                    label = { Text("License Plate Number") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
-                                )
-                                OutlinedTextField(
-                                    value = viewModel.vehicleModel,
-                                    onValueChange = { viewModel.vehicleModel = it },
-                                    label = { Text("Vehicle Model (e.g. Isuzu FSR)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
-                                )
-                            }
-                        },
-                        confirmButton = {
-                            Button(onClick = { viewModel.updateVehicleDetails() }) { Text("Save Vehicle") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { viewModel.showVehicleSetupDialog = false }) { Text("Cancel") }
-                        }
-                    )
                 }
 
                 val history = orders.filter { it.status == "Delivered" || it.status == "Completed" }
@@ -411,7 +442,7 @@ fun TransporterStatCard(label: String, value: String, icon: ImageVector, modifie
 }
 
 @Composable
-fun VehicleStatusCard(fuelLevel: Int, serviceKm: Int, onEdit: () -> Unit) {
+fun VehicleStatusCard(fuelLevel: Int, serviceKm: Int, plate: String?, model: String?, onEdit: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -423,12 +454,27 @@ fun VehicleStatusCard(fuelLevel: Int, serviceKm: Int, onEdit: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Vehicle Health", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Vehicle Status", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, "Edit Health", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
             }
             Spacer(Modifier.height(16.dp))
+            
+            // Plate & Model
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = if (!plate.isNullOrBlank()) "$model ($plate)" else "Vehicle not registered",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            Spacer(Modifier.height(12.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.LocalGasStation, null, tint = Color(0xFFFFA000), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
@@ -604,10 +650,10 @@ fun WaitingForLoadState() {
             modifier = Modifier.size(64.dp).background(Color.White.copy(alpha = 0.05f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(32.dp))
+            Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text("Waiting for next load...", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-        Text("Your dispatch manager will assign a trip soon.", color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), fontSize = 12.sp)
+        Text("No active trips assigned.", color = Color.White, fontWeight = FontWeight.Bold)
+        Text("New loads from your manager will appear here.", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
     }
 }

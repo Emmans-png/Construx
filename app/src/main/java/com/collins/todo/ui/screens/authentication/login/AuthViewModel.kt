@@ -11,8 +11,13 @@ import com.collins.todo.data.repository.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 class AuthViewModel : ViewModel() {
@@ -40,9 +45,37 @@ class AuthViewModel : ViewModel() {
         fetchAvailableSites()
         fetchAvailableOrganizations()
         fetchProfile()
+        setupRealtime()
     }
 
-    private fun fetchProfile() {
+    private fun setupRealtime() {
+        viewModelScope.launch {
+            val user = SupabaseClient.client.auth.currentUserOrNull()
+            if (user != null) {
+                val channel = SupabaseClient.client.channel("profile_sync_${user.id}")
+                val flow = channel.postgresChangeFlow<io.github.jan.supabase.realtime.PostgresAction>(schema = "public") {
+                    table = "profiles"
+                }
+                
+                flow.onEach { action ->
+                    val record = when (action) {
+                        is io.github.jan.supabase.realtime.PostgresAction.Update -> action.record
+                        is io.github.jan.supabase.realtime.PostgresAction.Insert -> action.record
+                        else -> null
+                    }
+                    
+                    val profileId = record?.get("id")?.jsonPrimitive?.content
+                    if (profileId == user.id) {
+                        fetchProfile()
+                    }
+                }.launchIn(viewModelScope)
+                
+                channel.subscribe()
+            }
+        }
+    }
+
+    fun fetchProfile() {
         viewModelScope.launch {
             val user = SupabaseClient.client.auth.currentUserOrNull()
             if (user != null) {

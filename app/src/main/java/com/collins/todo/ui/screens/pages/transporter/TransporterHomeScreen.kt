@@ -35,7 +35,8 @@ fun TransporterHomeScreen(
     authViewModel: AuthViewModel,
     onLogout: () -> Unit,
     onNavigateToMessages: () -> Unit = {},
-    onNavigateToTracking: (Int) -> Unit = {}
+    onNavigateToTracking: (Int) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val currentUser = remember { SupabaseClient.client.auth.currentUserOrNull() }
     val displayUsername = remember(currentUser) { 
@@ -60,6 +61,9 @@ fun TransporterHomeScreen(
                 actions = {
                     IconButton(onClick = onNavigateToMessages) {
                         Icon(Icons.AutoMirrored.Filled.Message, "Messages", tint = Color.White)
+                    }
+                    IconButton(onClick = onNavigateToProfile) {
+                        Icon(Icons.Default.AccountCircle, "Profile", tint = Color.White)
                     }
                     IconButton(onClick = { authViewModel.signOut(onLogout) }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, "Logout", tint = Color.White)

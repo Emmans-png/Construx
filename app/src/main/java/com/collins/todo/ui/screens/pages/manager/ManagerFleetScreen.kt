@@ -115,7 +115,15 @@ fun DriverFleetCard(driver: UserProfile, onClick: () -> Unit) {
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(driver.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("Role: ${driver.role}", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = if (!driver.vehiclePlate.isNullOrBlank()) "${driver.vehicleModel} (${driver.vehiclePlate})" else "No Vehicle",
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontSize = 12.sp
+                    )
+                }
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.tertiary)
         }
@@ -154,6 +162,7 @@ fun DriverDetailView(driver: UserProfile, location: DriverLocation?, onBackToFle
                 }
                 Spacer(Modifier.height(20.dp))
                 ProfileInfoRow(Icons.Default.Phone, "Phone", driver.phoneNumber ?: "N/A")
+                ProfileInfoRow(Icons.Default.LocalShipping, "Vehicle", "${driver.vehicleModel ?: "N/A"} (${driver.vehiclePlate ?: "N/A"})")
                 ProfileInfoRow(Icons.Default.LocalGasStation, "Last Fuel Level", "${driver.fuelLevel}%")
                 ProfileInfoRow(Icons.Default.Settings, "Next Service", "in ${driver.nextServiceKm} km")
             }
@@ -164,32 +173,50 @@ fun DriverDetailView(driver: UserProfile, location: DriverLocation?, onBackToFle
         Spacer(Modifier.height(12.dp))
         
         Card(
-            modifier = Modifier.fillMaxWidth().height(250.dp),
+            modifier = Modifier.fillMaxWidth().height(350.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            if (location != null) {
-                AndroidView(
-                    factory = { ctx ->
-                        MapView(ctx).apply {
-                            setTileSource(TileSourceFactory.MAPNIK)
-                            controller.setZoom(15.0)
-                            val point = GeoPoint(location.latitude, location.longitude)
-                            controller.setCenter(point)
-                            
+            AndroidView(
+                factory = { ctx ->
+                    MapView(ctx).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(true)
+                        controller.setZoom(if (location != null) 15.0 else 5.0)
+                        
+                        val startPoint = if (location != null) {
+                            GeoPoint(location.latitude, location.longitude)
+                        } else {
+                            GeoPoint(0.0, 37.0) // Default center (e.g., Kenya)
+                        }
+                        controller.setCenter(startPoint)
+
+                        if (location != null) {
                             val marker = Marker(this)
-                            marker.position = point
+                            marker.position = startPoint
                             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            marker.title = "Last seen: ${location.updatedAt}"
+                            marker.title = "Driver: ${driver.username}\nLast seen: ${location.updatedAt ?: "Just now"}"
+                            marker.showInfoWindow()
                             overlays.add(marker)
                         }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(Modifier.fillMaxSize().background(Color(0xFF1A1A1A)), contentAlignment = Alignment.Center) {
-                    Text("No location data available", color = MaterialTheme.colorScheme.tertiary)
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { view ->
+                    if (location != null) {
+                        val point = GeoPoint(location.latitude, location.longitude)
+                        view.controller.animateTo(point)
+                        
+                        // Update or add marker
+                        view.overlays.clear()
+                        val marker = Marker(view)
+                        marker.position = point
+                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        marker.title = "Driver: ${driver.username}\nLast seen: ${location.updatedAt ?: "Just now"}"
+                        view.overlays.add(marker)
+                        view.invalidate()
+                    }
                 }
-            }
+            )
         }
     }
 }

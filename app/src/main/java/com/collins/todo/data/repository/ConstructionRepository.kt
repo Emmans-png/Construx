@@ -84,10 +84,19 @@ class ConstructionRepository {
             filter { eq("project_id", projectId) }
         }.decodeList<MaterialOrder>()
 
-    suspend fun createMaterialOrder(order: MaterialOrder): MaterialOrder? = 
-        supabase.from("material_orders").insert(order) {
-            select()
-        }.decodeSingleOrNull<MaterialOrder>()
+    suspend fun createMaterialOrder(order: MaterialOrder): MaterialOrder? {
+        return try {
+            val result = supabase.from("material_orders").insert(order) {
+                select()
+            }.decodeSingleOrNull<MaterialOrder>()
+            println("REPOSITORY_SUCCESS: Created order with ID: ${result?.id}")
+            result
+        } catch (e: Exception) {
+            println("REPOSITORY_ERROR: Failed to create order: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
 
     suspend fun updateMaterialOrder(order: MaterialOrder): MaterialOrder? =
         supabase.from("material_orders").update(order) {
@@ -104,16 +113,22 @@ class ConstructionRepository {
     suspend fun getTransporterOrders(): List<MaterialOrder> {
         val user = supabase.auth.currentUserOrNull() ?: return emptyList()
         val profile = getUserProfile() ?: return emptyList()
-        return supabase.from("material_orders").select {
-            filter {
-                or {
-                    eq("transporter_id", user.id)
-                    eq("organization_id", profile.organizationId ?: "")
+        return try {
+            supabase.from("material_orders").select {
+                filter {
+                    or {
+                        eq("transporter_id", user.id)
+                        // This allows the driver to see "Unassigned" orders in their organization
+                        eq("organization_id", profile.organizationId ?: "none")
+                    }
+                    neq("status", "Delivered")
+                    neq("status", "Completed")
                 }
-                neq("status", "Delivered")
-                neq("status", "Completed")
-            }
-        }.decodeList<MaterialOrder>()
+            }.decodeList<MaterialOrder>()
+        } catch (e: Exception) {
+            println("Error fetching transporter orders: ${e.message}")
+            emptyList()
+        }
     }
 
     suspend fun getAllDrivers(): List<UserProfile> {

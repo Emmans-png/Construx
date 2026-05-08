@@ -42,6 +42,8 @@ class ProfileViewModel : ViewModel() {
     var phoneNumber by mutableStateOf("")
     var organizationName by mutableStateOf("")
     var location by mutableStateOf("")
+    var vehiclePlate by mutableStateOf("")
+    var vehicleModel by mutableStateOf("")
     var selectedImageUri by mutableStateOf<Uri?>(null)
     var showDeleteDialog by mutableStateOf(false)
 
