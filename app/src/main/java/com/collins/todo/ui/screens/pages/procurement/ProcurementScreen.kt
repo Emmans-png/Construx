@@ -203,16 +203,31 @@ fun EditOrderDialog(
 }
 
 @Composable
-fun AddOrderDialog(onDismiss: () -> Unit, onOrderAdded: () -> Unit) {
+fun AddOrderDialog(
+    projectId: Int? = null,
+    onDismiss: () -> Unit, 
+    onOrderAdded: () -> Unit
+) {
     var materialName by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf("Units") }
     var stage by remember { mutableStateOf("Foundation") }
     var supplier by remember { mutableStateOf("") }
     var unitPrice by remember { mutableStateOf("") }
+    var selectedProjectId by remember { mutableStateOf(projectId) }
+    var projects by remember { mutableStateOf<List<com.collins.todo.data.Models.ConstructionProject>>(emptyList()) }
     
     val scope = rememberCoroutineScope()
     val repository = com.collins.todo.data.repository.ConstructionRepository()
+
+    LaunchedEffect(Unit) {
+        if (selectedProjectId == null) {
+            projects = repository.getProjects()
+            if (projects.isNotEmpty()) {
+                selectedProjectId = projects.first().id
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -220,6 +235,31 @@ fun AddOrderDialog(onDismiss: () -> Unit, onOrderAdded: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (projectId == null && projects.isNotEmpty()) {
+                    Text("Select Project", color = Color.White, fontSize = 12.sp)
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(projects.find { it.id == selectedProjectId }?.name ?: "Select Project")
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            projects.forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text(p.name) },
+                                    onClick = {
+                                        selectedProjectId = p.id
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 TextField(value = materialName, onValueChange = { materialName = it }, label = { Text("Material Name") })
                 TextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") })
                 TextField(value = unitPrice, onValueChange = { unitPrice = it }, label = { Text("Unit Price ($)") })
@@ -243,26 +283,30 @@ fun AddOrderDialog(onDismiss: () -> Unit, onOrderAdded: () -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = {
-                scope.launch {
-                    val projects = repository.getProjects()
-                    if (projects.isNotEmpty()) {
-                        repository.createMaterialOrder(
-                            com.collins.todo.data.Models.MaterialOrder(
-                                projectId = projects.first().id ?: 0,
-                                materialName = materialName,
-                                quantity = quantity.toDoubleOrNull() ?: 0.0,
-                                unit = unit,
-                                unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
-                                requiredStage = stage,
-                                supplierName = supplier
+            Button(
+                enabled = selectedProjectId != null && materialName.isNotBlank(),
+                onClick = {
+                    scope.launch {
+                        try {
+                            repository.createMaterialOrder(
+                                com.collins.todo.data.Models.MaterialOrder(
+                                    projectId = selectedProjectId!!,
+                                    materialName = materialName,
+                                    quantity = quantity.toDoubleOrNull() ?: 0.0,
+                                    unit = unit,
+                                    unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
+                                    requiredStage = stage,
+                                    supplierName = supplier
+                                )
                             )
-                        )
-                        onOrderAdded()
-                        onDismiss()
+                            onOrderAdded()
+                            onDismiss()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
-            }) { Text("Add Order") }
+            ) { Text("Add Order") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

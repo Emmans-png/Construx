@@ -3,6 +3,7 @@ package com.collins.todo.ui.screens.pages.transporter
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -40,7 +42,7 @@ fun TransporterConsole(
     val orders by viewModel.orders
     val drivers by viewModel.drivers
     val isLoading by viewModel.isLoading
-    val activeOrder = orders.find { it.status == "Ongoing" || it.status == "Dispatched" }
+    val activeOrder = orders.find { it.status == "Ongoing" || it.status == "Dispatched" || it.status == "Arrived" || it.status == "Unloading" }
     val context = LocalContext.current
 
     var showEstimateDialog by remember { mutableStateOf(false) }
@@ -48,6 +50,12 @@ fun TransporterConsole(
     var showNewTripDialog by remember { mutableStateOf(false) }
     var estimatedDays by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
+    // Form states for New Trip
+    var material by remember { mutableStateOf("") }
+    var quantity by remember { mutableStateOf("") }
+    var projectSite by remember { mutableStateOf("") }
+    var supplier by remember { mutableStateOf("") }
 
     if (showEstimateDialog && activeOrder != null) {
         AlertDialog(
@@ -68,7 +76,6 @@ fun TransporterConsole(
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
-                        // Update order status and estimated days in Supabase
                         com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
                             buildJsonObject {
                                 put("status", "Ongoing")
@@ -79,6 +86,7 @@ fun TransporterConsole(
                         }
                         showEstimateDialog = false
                         onNavigateToTracking(activeOrder.id ?: 0)
+                        viewModel.fetchOrders()
                     }
                 }) { Text("Start Trip") }
             },
@@ -86,10 +94,84 @@ fun TransporterConsole(
         )
     }
 
+    if (showNewTripDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewTripDialog = false },
+            title = { Text("Record New Trip", color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = material,
+                        onValueChange = { material = it },
+                        label = { Text("Material Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = quantity,
+                        onValueChange = { quantity = it },
+                        label = { Text("Quantity") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = projectSite,
+                        onValueChange = { projectSite = it },
+                        label = { Text("Project Site ID") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = supplier,
+                        onValueChange = { supplier = it },
+                        label = { Text("Supplier Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = material.isNotBlank() && projectSite.isNotBlank(),
+                    onClick = {
+                        scope.launch {
+                            viewModel.createTrip(
+                                MaterialOrder(
+                                    projectId = projectSite.toIntOrNull() ?: 0,
+                                    materialName = material,
+                                    quantity = quantity.toDoubleOrNull() ?: 0.0,
+                                    unit = "Units",
+                                    unitPrice = 0.0,
+                                    status = "Ongoing",
+                                    requiredStage = "Current",
+                                    supplierName = supplier
+                                )
+                            )
+                            material = ""; quantity = ""; projectSite = ""; supplier = ""
+                            showNewTripDialog = false
+                        }
+                    }
+                ) { Text("Create Trip") }
+            },
+            dismissButton = { 
+                TextButton(onClick = { 
+                    showNewTripDialog = false 
+                    material = ""; quantity = ""; projectSite = ""; supplier = ""
+                }) { Text("Cancel") } 
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("TRANSPORTER CONSOLE", fontWeight = FontWeight.Black, letterSpacing = 1.sp) },
+                title = { 
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Logistics Portal", color = MaterialTheme.colorScheme.tertiary, fontSize = 10.sp)
+                        Text("TRANSPORTER CONSOLE", fontWeight = FontWeight.Black, letterSpacing = 1.sp) 
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Default.Person, "Profile")
@@ -117,8 +199,9 @@ fun TransporterConsole(
                 
                 FloatingActionButton(
                     onClick = { /* Open Chat */ },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    shape = CircleShape
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    shape = CircleShape,
+                    contentColor = Color.White
                 ) {
                     Icon(Icons.Default.Chat, "Dispatch Chat")
                 }
@@ -128,16 +211,25 @@ fun TransporterConsole(
     ) { padding ->
         if (isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
             ) {
+                // Dashboard Summary Stats
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TransporterStatCard("Total Trips", "${orders.size}", Icons.Default.Route, Modifier.weight(1f))
+                        TransporterStatCard("Earnings", "$${String.format("%,.0f", orders.filter { it.status == "Delivered" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Modifier.weight(1f))
+                    }
+                }
+
                 if (activeOrder != null) {
                     item {
                         ActiveLoadCard(
@@ -153,18 +245,48 @@ fun TransporterConsole(
                     
                     item {
                         QuickActionBar(
-                            onArrived = { /* Update status */ },
-                            onUnloading = { /* Update status */ },
-                            onPOD = { /* Open Camera */ },
+                            onArrived = {
+                                scope.launch {
+                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
+                                        buildJsonObject { put("status", "Arrived") }
+                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
+                                    viewModel.fetchOrders()
+                                }
+                            },
+                            onUnloading = {
+                                scope.launch {
+                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
+                                        buildJsonObject { put("status", "Unloading") }
+                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
+                                    viewModel.fetchOrders()
+                                }
+                            },
+                            onPOD = {
+                                scope.launch {
+                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
+                                        buildJsonObject { put("status", "Delivered") }
+                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
+                                    viewModel.fetchOrders()
+                                }
+                            },
                             onTrack = { 
-                                if (activeOrder?.status == "Dispatched") {
+                                if (activeOrder.status == "Dispatched") {
                                     showEstimateDialog = true 
                                 } else {
-                                    activeOrder?.id?.let { onNavigateToTracking(it) }
+                                    activeOrder.id?.let { onNavigateToTracking(it) }
                                 }
                             }
                         )
                     }
+                } else {
+                    item {
+                        WaitingForLoadState()
+                    }
+                }
+
+                // Vehicle Status Card
+                item {
+                    VehicleStatusCard()
                 }
 
                 item {
@@ -175,10 +297,11 @@ fun TransporterConsole(
                     Text("Trip History", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
                 
-                // Show other orders as history
-                val history = orders.filter { it != activeOrder }
+                val history = orders.filter { it.status == "Delivered" || it.status == "Completed" }
                 if (history.isEmpty() && activeOrder == null) {
-                    item { Text("No trips found.", color = MaterialTheme.colorScheme.tertiary) }
+                    item { 
+                        Text("No completed trips recorded.", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(vertical = 12.dp)) 
+                    }
                 } else {
                     items(history.size) { index ->
                         val order = history[index]
@@ -219,6 +342,59 @@ fun TransporterConsole(
                 TextButton(onClick = { showDriversDialog = false }) { Text("Close") }
             }
         )
+    }
+}
+
+@Composable
+fun TransporterStatCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            Text(label, color = MaterialTheme.colorScheme.tertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun VehicleStatusCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Text("Vehicle Health", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocalGasStation, null, tint = Color(0xFFFFA000), modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Fuel Level", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                        Text("78%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { 0.78f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                        color = Color(0xFFFFA000),
+                        trackColor = Color.White.copy(alpha = 0.1f)
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.SettingsInputComponent, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Next Service: in 1,240 km", color = Color.White, fontSize = 13.sp)
+            }
+        }
     }
 }
 
@@ -366,8 +542,14 @@ fun WaitingForLoadState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 2.dp)
+        Box(
+            modifier = Modifier.size(64.dp).background(Color.White.copy(alpha = 0.05f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(32.dp))
+        }
         Spacer(Modifier.height(16.dp))
-        Text("Waiting for next load...", color = MaterialTheme.colorScheme.tertiary)
+        Text("Waiting for next load...", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+        Text("Your dispatch manager will assign a trip soon.", color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), fontSize = 12.sp)
     }
 }

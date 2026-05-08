@@ -7,6 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.collins.todo.data.Models.ConstructionProject
 import com.collins.todo.data.Models.MaterialOrder
 import com.collins.todo.data.repository.ConstructionRepository
+import com.collins.todo.data.repository.SupabaseClient
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class HomeViewModel: ViewModel() {
@@ -26,6 +32,28 @@ class HomeViewModel: ViewModel() {
 
     init {
         refreshAll()
+        setupRealtime()
+    }
+
+    private fun setupRealtime() {
+        val projectChannel = SupabaseClient.client.channel("projects_sync")
+        projectChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "construction_projects"
+        }.onEach {
+            fetchProjects()
+        }.launchIn(viewModelScope)
+
+        val orderChannel = SupabaseClient.client.channel("orders_sync")
+        orderChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "material_orders"
+        }.onEach {
+            fetchOrders()
+        }.launchIn(viewModelScope)
+
+        viewModelScope.launch {
+            projectChannel.subscribe()
+            orderChannel.subscribe()
+        }
     }
 
     fun refreshAll() {

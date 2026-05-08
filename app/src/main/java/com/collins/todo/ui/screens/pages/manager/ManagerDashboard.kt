@@ -38,7 +38,9 @@ fun ManagerDashboard(
     onNavigateToMaterials: () -> Unit,
     onNavigateToTeam: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onAddProject: () -> Unit,
+    onEditProject: (ConstructionProject) -> Unit
 ) {
     val projects by viewModel.projects
     val orders by viewModel.orders
@@ -46,10 +48,15 @@ fun ManagerDashboard(
     val isLoading by viewModel.isLoading
 
     var showAddOrderDialog by remember { mutableStateOf(false) }
+    var selectedProjectIdForOrder by remember { mutableStateOf<Int?>(null) }
     var showDriversDialog by remember { mutableStateOf(false) }
     var editingOrder by remember { mutableStateOf<MaterialOrder?>(null) }
     val repository = remember { com.collins.todo.data.repository.ConstructionRepository() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshAll()
+    }
 
     Scaffold(
         topBar = {
@@ -97,7 +104,16 @@ fun ManagerDashboard(
                 )
             }
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddProject,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Project")
+            }
+        }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -125,15 +141,50 @@ fun ManagerDashboard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Live Order Flow", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    IconButton(onClick = { showAddOrderDialog = true }) {
-                        Icon(Icons.Default.AddCircle, "Add Order", tint = MaterialTheme.colorScheme.primary)
+                    Text("Active Projects", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    IconButton(onClick = onAddProject) {
+                        Icon(Icons.Default.AddCircle, "Add Project", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
 
             if (isLoading) {
                 item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
+            } else if (projects.isEmpty()) {
+                item {
+                    Text("No active projects found.", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(vertical = 8.dp))
+                }
+            } else {
+                items(projects) { project ->
+                    ProjectCard(
+                        project = project,
+                        onEdit = { onEditProject(project) },
+                        onDelete = {
+                            scope.launch {
+                                project.id?.let { viewModel.deleteProject(it) }
+                                viewModel.fetchProjects()
+                            }
+                        },
+                        onAddOrder = {
+                            selectedProjectIdForOrder = project.id
+                            showAddOrderDialog = true
+                        }
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Live Order Flow", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            }
+
+            if (isLoading) {
+                // Already shown above if loading
             } else if (orders.isEmpty()) {
                 item { 
                     Text("No active orders found.", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(vertical = 8.dp))
@@ -159,10 +210,15 @@ fun ManagerDashboard(
 
         if (showAddOrderDialog) {
             AddOrderDialog(
-                onDismiss = { showAddOrderDialog = false },
+                projectId = selectedProjectIdForOrder,
+                onDismiss = { 
+                    showAddOrderDialog = false
+                    selectedProjectIdForOrder = null
+                },
                 onOrderAdded = { 
                     viewModel.fetchOrders()
                     showAddOrderDialog = false
+                    selectedProjectIdForOrder = null
                 }
             )
         }
@@ -284,6 +340,71 @@ fun MetricCard(label: String, value: String, icon: ImageVector, modifier: Modifi
             Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(label, color = MaterialTheme.colorScheme.tertiary, fontSize = 11.sp)
         }
+    }
+}
+
+@Composable
+fun ProjectCard(
+    project: ConstructionProject,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onAddOrder: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(project.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.weight(1f))
+
+                IconButton(onClick = onAddOrder, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.AddShoppingCart, contentDescription = "Add Order", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        project.currentStage,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                InfoItem("Budget", "$${String.format("%,.0f", project.totalBudget)}")
+                InfoItem("Location", project.location)
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoItem(label: String, value: String) {
+    Column {
+        Text(label, color = MaterialTheme.colorScheme.tertiary, fontSize = 10.sp)
+        Text(value, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 

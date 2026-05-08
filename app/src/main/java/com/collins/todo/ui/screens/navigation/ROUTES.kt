@@ -16,6 +16,7 @@ object ROUTES {
     const val ROI_ANALYZER = "roi_analyzer"
     const val ABOUT = "about"
     const val CONTACT = "contact"
+    const val SIGNUP_SUCCESS = "signup_success"
     const val PROJECT_FORM = "project_form?projectId={projectId}"
     const val TODO_FORM = "todo_form?todoId={todoId}"
     

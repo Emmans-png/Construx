@@ -24,6 +24,7 @@ import com.collins.todo.ui.screens.todoform.TodoViewModel
 import com.collins.todo.ui.screens.authentication.login.LoginScreen
 import com.collins.todo.ui.screens.authentication.login.AuthViewModel
 import com.collins.todo.ui.screens.authentication.signup.RegisterScreen
+import com.collins.todo.ui.screens.authentication.signup.SignupSuccessScreen
 import com.collins.todo.ui.screens.authentication.signup.OrganizationEntryScreen
 import com.collins.todo.ui.screens.authentication.signup.RoleSelectionScreen
 import com.collins.todo.ui.screens.authentication.forgotpassword.ForgotScreen
@@ -132,11 +133,20 @@ fun AppNavigation() {
                     }
                 },
                 onSignUpSuccess = {
+                    navController.navigate(ROUTES.SIGNUP_SUCCESS) {
+                        popUpTo(ROUTES.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(ROUTES.SIGNUP_SUCCESS) {
+            SignupSuccessScreen(
+                onContinue = {
                     val role = authViewModel.getUserRole()
                     val destination = if (role == "Transporter") ROUTES.TRANSPORTER_HOME else ROUTES.HOME
                     authViewModel.clearState()
                     navController.navigate(destination) {
-                        popUpTo(ROUTES.SPLASH) { inclusive = true }
+                        popUpTo(ROUTES.SIGNUP_SUCCESS) { inclusive = true }
                     }
                 }
             )
@@ -164,7 +174,11 @@ fun AppNavigation() {
                 onNavigateToMaterials = { navController.navigate(ROUTES.PROCUREMENT) },
                 onNavigateToTeam = { navController.navigate("team") },
                 onNavigateToAnalytics = { navController.navigate(ROUTES.ROI_ANALYZER) },
-                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) }
+                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) },
+                onAddProject = { navController.navigate(ROUTES.createProjectFormRoute()) },
+                onEditProject = { project ->
+                    navController.navigate(ROUTES.createProjectFormRoute(project.id))
+                }
             )
         }
         composable("team") {
@@ -229,7 +243,7 @@ fun AppNavigation() {
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getInt("projectId")?.takeIf { it != -1 }
-            val homeEntry = remember { navController.getBackStackEntry(ROUTES.HOME) }
+            val homeEntry = remember(backStackEntry) { navController.getBackStackEntry(ROUTES.HOME) }
             val homeViewModel: HomeViewModel = viewModel(homeEntry)
             ProjectFormScreen(
                 projectId = projectId,

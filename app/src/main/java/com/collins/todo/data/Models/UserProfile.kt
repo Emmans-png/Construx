@@ -19,5 +19,7 @@ data class UserProfile(
     @SerialName("phone_number")
     val phoneNumber: String? = null,
     @SerialName("preferred_site_id")
-    val preferredSiteId: Int? = null
+    val preferredSiteId: Int? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null
 )

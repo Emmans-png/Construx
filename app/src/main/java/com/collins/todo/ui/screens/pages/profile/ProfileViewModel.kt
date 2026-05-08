@@ -16,6 +16,9 @@ class ProfileViewModel : ViewModel() {
     private val _profile = mutableStateOf<UserProfile?>(null)
     val profile: State<UserProfile?> = _profile
 
+    private val _stats = mutableStateOf<Map<String, String>>(emptyMap())
+    val stats: State<Map<String, String>> = _stats
+
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
@@ -33,16 +36,42 @@ class ProfileViewModel : ViewModel() {
             try {
                 val userProfile = repository.getUserProfile()
                 _profile.value = userProfile
-                if (userProfile == null) {
-                    println("Profile fetch returned null for user.")
-                } else {
+                if (userProfile != null) {
+                    fetchStats(userProfile)
                     println("Profile fetched successfully: ${userProfile.username}")
+                } else {
+                    println("Profile fetch returned null for user.")
                 }
             } catch (e: Exception) {
                 println("Error fetching profile: ${e.message}")
                 _errorMessage.value = "Failed to load profile: ${e.message}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    private fun fetchStats(userProfile: UserProfile) {
+        viewModelScope.launch {
+            try {
+                if (userProfile.role == "Manager") {
+                    val projects = repository.getProjects()
+                    val team = repository.getTeam()
+                    _stats.value = mapOf(
+                        "Projects" to projects.size.toString(),
+                        "Team Size" to team.size.toString(),
+                        "Total Budget" to "$${String.format("%,.0f", projects.sumOf { it.totalBudget })}"
+                    )
+                } else {
+                    val orders = repository.getTransporterOrders()
+                    _stats.value = mapOf(
+                        "Deliveries" to orders.size.toString(),
+                        "Completed" to orders.count { it.status == "Delivered" || it.status == "Completed" }.toString(),
+                        "Active Trips" to orders.count { it.status == "Ongoing" || it.status == "Dispatched" }.toString()
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
