@@ -1,10 +1,13 @@
 package com.collins.todo.ui.screens.pages.transporter
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.collins.todo.data.Models.MaterialOrder
+import com.collins.todo.data.Models.UserProfile
 import com.collins.todo.data.repository.ConstructionRepository
 import com.collins.todo.data.repository.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -21,11 +24,33 @@ class TransporterViewModel : ViewModel() {
     private val _orders = mutableStateOf<List<MaterialOrder>>(emptyList())
     val orders: State<List<MaterialOrder>> = _orders
 
-    private val _drivers = mutableStateOf<List<com.collins.todo.data.Models.UserProfile>>(emptyList())
-    val drivers: State<List<com.collins.todo.data.Models.UserProfile>> = _drivers
+    private val _drivers = mutableStateOf<List<UserProfile>>(emptyList())
+    val drivers: State<List<UserProfile>> = _drivers
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
+
+    // UI State for Dialogs
+    var showEstimateDialog by mutableStateOf(false)
+    var showDriversDialog by mutableStateOf(false)
+    var showNewTripDialog by mutableStateOf(false)
+    var showEditVehicleHealth by mutableStateOf(false)
+
+    // Form states
+    var estimatedDays by mutableStateOf("")
+    var material by mutableStateOf("")
+    var quantity by mutableStateOf("")
+    var projectSite by mutableStateOf("")
+    var supplier by mutableStateOf("")
+    
+    // Vehicle Health Form
+    var fuel by mutableStateOf("")
+    var serviceKm by mutableStateOf("")
+
+    // Vehicle Setup
+    var vehiclePlate by mutableStateOf("")
+    var vehicleModel by mutableStateOf("")
+    var showVehicleSetupDialog by mutableStateOf(false)
 
     init {
         fetchOrders()
@@ -74,12 +99,64 @@ class TransporterViewModel : ViewModel() {
         }
     }
 
+    fun updateOrderStatus(orderId: Int, newStatus: String, estimatedDays: Int? = null) {
+        viewModelScope.launch {
+            try {
+                val user = SupabaseClient.client.auth.currentUserOrNull()
+                val currentOrder = _orders.value.find { it.id == orderId } ?: return@launch
+                
+                repository.updateMaterialOrder(
+                    currentOrder.copy(
+                        status = newStatus,
+                        transporterId = user?.id, // Assign the driver who updates it
+                        estimatedDays = estimatedDays ?: currentOrder.estimatedDays
+                    )
+                )
+                fetchOrders()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun createTrip(order: MaterialOrder) {
         viewModelScope.launch {
             try {
                 val user = com.collins.todo.data.repository.SupabaseClient.client.auth.currentUserOrNull()
                 repository.createMaterialOrder(order.copy(transporterId = user?.id))
                 fetchOrders()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun updateVehicleHealth(fuel: Int, serviceKm: Int) {
+        viewModelScope.launch {
+            try {
+                val currentProfile = repository.getUserProfile()
+                if (currentProfile != null) {
+                    val updated = currentProfile.copy(fuelLevel = fuel, nextServiceKm = serviceKm)
+                    repository.updateUserProfile(updated)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun updateVehicleDetails() {
+        viewModelScope.launch {
+            try {
+                val currentProfile = repository.getUserProfile()
+                if (currentProfile != null) {
+                    val updated = currentProfile.copy(
+                        vehiclePlate = vehiclePlate,
+                        vehicleModel = vehicleModel
+                    )
+                    repository.updateUserProfile(updated)
+                    showVehicleSetupDialog = false
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

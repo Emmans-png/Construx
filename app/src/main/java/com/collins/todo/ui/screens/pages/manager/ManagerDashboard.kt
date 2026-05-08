@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +27,9 @@ import com.collins.todo.ui.screens.authentication.login.AuthViewModel
 import com.collins.todo.ui.screens.pages.home.HomeViewModel
 import com.collins.todo.ui.screens.pages.procurement.AddOrderDialog
 import com.collins.todo.ui.screens.pages.procurement.EditOrderDialog
+import com.collins.todo.ui.screens.pages.procurement.ProcurementViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +42,7 @@ fun ManagerDashboard(
     onNavigateToMaterials: () -> Unit,
     onNavigateToTeam: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
+    onNavigateToFleet: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onAddProject: () -> Unit,
     onEditProject: (ConstructionProject) -> Unit
@@ -46,17 +51,9 @@ fun ManagerDashboard(
     val orders by viewModel.orders
     val drivers by viewModel.drivers
     val isLoading by viewModel.isLoading
-
-    var showAddOrderDialog by remember { mutableStateOf(false) }
-    var selectedProjectIdForOrder by remember { mutableStateOf<Int?>(null) }
-    var showDriversDialog by remember { mutableStateOf(false) }
-    var editingOrder by remember { mutableStateOf<MaterialOrder?>(null) }
     val repository = remember { com.collins.todo.data.repository.ConstructionRepository() }
     val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        viewModel.refreshAll()
-    }
+    val procurementViewModel: ProcurementViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -128,9 +125,9 @@ fun ManagerDashboard(
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricCard("Current ROI", "12.4%", Icons.Default.TrendingUp, Modifier.weight(1f)) {}
-                    MetricCard("Total Drivers", "${drivers.size}", Icons.Default.LocalShipping, Modifier.weight(1f)) {
-                        showDriversDialog = true
+                    MetricCard("Current ROI", "12.4%", Icons.AutoMirrored.Filled.TrendingUp, Modifier.weight(1f)) {}
+                    MetricCard("Total Drivers", drivers.size.toString(), Icons.Default.LocalShipping, Modifier.weight(1f)) {
+                        onNavigateToFleet()
                     }
                 }
             }
@@ -166,8 +163,7 @@ fun ManagerDashboard(
                             }
                         },
                         onAddOrder = {
-                            selectedProjectIdForOrder = project.id
-                            showAddOrderDialog = true
+                            procurementViewModel.onAddOrderClick(project.id)
                         }
                     )
                 }
@@ -193,7 +189,7 @@ fun ManagerDashboard(
                 items(orders.take(5)) { order ->
                     OrderFlowItem(
                         order = order,
-                        onEdit = { editingOrder = order },
+                        onEdit = { procurementViewModel.onEditOrderClick(order) },
                         onDelete = {
                             scope.launch {
                                 order.id?.let { repository.deleteMaterialOrder(it) }
@@ -201,97 +197,31 @@ fun ManagerDashboard(
                             }
                         },
                         onTrack = {
-                            order.id?.let { onNavigateToMaterials() } // Or direct to tracking if you prefer
+                            order.id?.let { onNavigateToMaterials() }
                         }
                     )
                 }
             }
         }
 
-        if (showAddOrderDialog) {
+        if (procurementViewModel.showAddOrder) {
             AddOrderDialog(
-                projectId = selectedProjectIdForOrder,
-                onDismiss = { 
-                    showAddOrderDialog = false
-                    selectedProjectIdForOrder = null
-                },
-                onOrderAdded = { 
-                    viewModel.fetchOrders()
-                    showAddOrderDialog = false
-                    selectedProjectIdForOrder = null
-                }
+                viewModel = procurementViewModel
             )
         }
 
-        editingOrder?.let { order ->
+        procurementViewModel.editingOrder?.let { order ->
             EditOrderDialog(
                 order = order,
-                onDismiss = { editingOrder = null },
+                onDismiss = { procurementViewModel.onDismissEditOrder() },
                 onOrderUpdated = { updated ->
                     scope.launch {
                         repository.updateMaterialOrder(updated)
                         viewModel.fetchOrders()
-                        editingOrder = null
+                        procurementViewModel.onDismissEditOrder()
                     }
                 }
             )
-        }
-
-        if (showDriversDialog) {
-            DriversListDialog(
-                drivers = drivers,
-                onDismiss = { showDriversDialog = false }
-            )
-        }
-    }
-}
-
-@Composable
-fun DriversListDialog(
-    drivers: List<com.collins.todo.data.Models.UserProfile>,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Registered Drivers", color = Color.White) },
-        containerColor = MaterialTheme.colorScheme.surface,
-        text = {
-            if (drivers.isEmpty()) {
-                Text("No drivers registered under your company yet.", color = MaterialTheme.colorScheme.tertiary)
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(drivers) { driver ->
-                        DriverListItem(driver)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        }
-    )
-}
-
-@Composable
-fun DriverListItem(driver: com.collins.todo.data.Models.UserProfile) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.3f))
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(driver.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(driver.phoneNumber ?: "No phone", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            }
-            Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(driver.email, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            }
         }
     }
 }
@@ -310,9 +240,9 @@ fun FinancialSummaryCard(projects: List<ConstructionProject>) {
             Spacer(Modifier.height(16.dp))
             
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("$${String.format("%,.0f", actualSpend)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+                Text("$${String.format(Locale.getDefault(), "%,.0f", actualSpend)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.width(8.dp))
-                Text("of $${String.format("%,.0f", totalBudget)}", color = MaterialTheme.colorScheme.tertiary, fontSize = 14.sp)
+                Text("of $${String.format(Locale.getDefault(), "%,.0f", totalBudget)}", color = MaterialTheme.colorScheme.tertiary, fontSize = 14.sp)
             }
             
             Spacer(Modifier.height(12.dp))
@@ -356,44 +286,58 @@ fun ProjectCard(
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(project.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(modifier = Modifier.weight(1f))
-
-                IconButton(onClick = onAddOrder, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.AddShoppingCart, contentDescription = "Add Order", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        project.currentStage,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        fontWeight = FontWeight.Bold
+                        project.name, 
+                        color = Color.White, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onAddOrder, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.AddShoppingCart, contentDescription = "Add Order", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    project.currentStage.uppercase(),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                InfoItem("Budget", "$${String.format("%,.0f", project.totalBudget)}")
+                InfoItem("Budget", "$${String.format(Locale.getDefault(), "%,.0f", project.totalBudget)}")
                 InfoItem("Location", project.location)
             }
         }

@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.collins.todo.data.Models.UserProfile
+import com.collins.todo.data.repository.ConstructionRepository
 import com.collins.todo.data.repository.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -31,9 +33,22 @@ class AuthViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
     var isSuccess by mutableStateOf(false)
 
+    private val _currentUserProfile = mutableStateOf<UserProfile?>(null)
+    val currentUserProfile: UserProfile? get() = _currentUserProfile.value
+
     init {
         fetchAvailableSites()
         fetchAvailableOrganizations()
+        fetchProfile()
+    }
+
+    private fun fetchProfile() {
+        viewModelScope.launch {
+            val user = SupabaseClient.client.auth.currentUserOrNull()
+            if (user != null) {
+                _currentUserProfile.value = ConstructionRepository().getUserProfile()
+            }
+        }
     }
 
     fun fetchAvailableOrganizations() {

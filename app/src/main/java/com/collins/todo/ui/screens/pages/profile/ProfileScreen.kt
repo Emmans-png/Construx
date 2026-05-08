@@ -22,6 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.collins.todo.data.Models.UserProfile
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,20 +39,15 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onDeleteAccount: () -> Unit
 ) {
+    val context = LocalContext.current
     val profile by viewModel.profile
     val stats by viewModel.stats
     val isLoading by viewModel.isLoading
     val errorMessage by viewModel.errorMessage
-    
-    var isEditing by remember { mutableStateOf(false) }
-    
-    // Form states
-    var username by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
-    var organizationName by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
 
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        viewModel.selectedImageUri = it
+    }
 
     LaunchedEffect(Unit) {
         viewModel.fetchProfile()
@@ -53,10 +55,10 @@ fun ProfileScreen(
 
     LaunchedEffect(profile) {
         profile?.let {
-            username = it.username
-            phoneNumber = it.phoneNumber ?: ""
-            organizationName = it.organizationName ?: ""
-            location = it.location ?: ""
+            viewModel.username = it.username
+            viewModel.phoneNumber = it.phoneNumber ?: ""
+            viewModel.organizationName = it.organizationName ?: ""
+            viewModel.location = it.location ?: ""
         }
     }
 
@@ -70,21 +72,33 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    if (!isEditing) {
-                        IconButton(onClick = { isEditing = true }) {
+                    if (!viewModel.isEditing) {
+                        IconButton(onClick = { viewModel.isEditing = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                         }
                     } else {
                         IconButton(onClick = {
                             profile?.let {
                                 val updated = it.copy(
-                                    username = username,
-                                    phoneNumber = phoneNumber,
-                                    organizationName = organizationName,
-                                    location = location
+                                    username = viewModel.username,
+                                    phoneNumber = viewModel.phoneNumber,
+                                    organizationName = viewModel.organizationName,
+                                    location = viewModel.location,
+                                    profilePictureUrl = profile?.profilePictureUrl
                                 )
                                 viewModel.updateProfile(updated) {
-                                    isEditing = false
+                                    viewModel.isEditing = false
+                                    viewModel.selectedImageUri = null // Clear selected image after update
+                                }
+
+                                viewModel.selectedImageUri?.let { uri ->
+                                    viewModel.uploadProfilePicture(context, uri) { success ->
+                                        if (success) {
+                                            // Optionally refresh profile to show new picture
+                                            viewModel.fetchProfile()
+                                        }
+                                        viewModel.selectedImageUri = null
+                                    }
                                 }
                             }
                         }) {
@@ -125,20 +139,12 @@ fun ProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                            contentAlignment = Alignment.Center
+                        ProfilePicture(
+                            imageUrl = profile?.profilePictureUrl,
+                            initial = viewModel.username.take(1).uppercase(),
+                            isEditing = viewModel.isEditing
                         ) {
-                            Text(
-                                text = username.take(1).uppercase(),
-                                fontSize = 48.sp,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            imagePickerLauncher.launch("image/*")
                         }
                         Spacer(Modifier.height(12.dp))
                         Text(
@@ -182,15 +188,15 @@ fun ProfileScreen(
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         Text("Personal Information", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
                         
-                        ProfileInfoItem("Full Name", username, Icons.Default.Person, isEditing) { username = it }
+                        ProfileInfoItem("Full Name", viewModel.username, Icons.Default.Person, viewModel.isEditing) { viewModel.username = it }
                         ProfileInfoItem("Email Address", profile?.email ?: "N/A", Icons.Default.Email, false) { }
-                        ProfileInfoItem("Phone Number", phoneNumber, Icons.Default.Phone, isEditing) { phoneNumber = it }
+                        ProfileInfoItem("Phone Number", viewModel.phoneNumber, Icons.Default.Phone, viewModel.isEditing) { viewModel.phoneNumber = it }
                         
                         if (profile?.role == "Manager") {
                             HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                             Text("Organization", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
-                            ProfileInfoItem("Company", organizationName, Icons.Default.Business, isEditing) { organizationName = it }
-                            ProfileInfoItem("Location", location, Icons.Default.LocationOn, isEditing) { location = it }
+                            ProfileInfoItem("Company", viewModel.organizationName, Icons.Default.Business, viewModel.isEditing) { viewModel.organizationName = it }
+                            ProfileInfoItem("Location", viewModel.location, Icons.Default.LocationOn, viewModel.isEditing) { viewModel.location = it }
                         }
                     }
                 }
@@ -229,7 +235,7 @@ fun ProfileScreen(
                 // Danger Zone
                 Spacer(Modifier.height(32.dp))
                 TextButton(
-                    onClick = { showDeleteDialog = true },
+                    onClick = { viewModel.showDeleteDialog = true },
                     modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error)
@@ -240,9 +246,9 @@ fun ProfileScreen(
         }
     }
 
-    if (showDeleteDialog) {
+    if (viewModel.showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { viewModel.showDeleteDialog = false },
             title = { Text("Delete Account?") },
             text = { Text("This action is permanent and cannot be undone. All your project data and history will be wiped from Construx servers.") },
             confirmButton = {
@@ -256,7 +262,7 @@ fun ProfileScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = { viewModel.showDeleteDialog = false }) {
                     Text("CANCEL", color = Color.White)
                 }
             },
@@ -264,6 +270,56 @@ fun ProfileScreen(
             titleContentColor = Color.White,
             textContentColor = MaterialTheme.colorScheme.tertiary
         )
+    }
+}
+
+@Composable
+fun ProfilePicture(
+    imageUrl: String?,
+    initial: String,
+    isEditing: Boolean,
+    onImageClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(100.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl != null && imageUrl.isNotBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Profile Picture",
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
+            )
+        } else {
+            Text(
+                text = initial,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        if (isEditing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = onImageClick) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Change Profile Picture",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

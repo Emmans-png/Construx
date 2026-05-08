@@ -21,5 +21,15 @@ data class UserProfile(
     @SerialName("preferred_site_id")
     val preferredSiteId: Int? = null,
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    @SerialName("profile_picture_url")
+    val profilePictureUrl: String? = null,
+    @SerialName("vehicle_plate")
+    val vehiclePlate: String? = null,
+    @SerialName("vehicle_model")
+    val vehicleModel: String? = null,
+    @SerialName("fuel_level")
+    val fuelLevel: Int = 100,
+    @SerialName("next_service_km")
+    val nextServiceKm: Int = 5000
 )

@@ -31,8 +31,11 @@ import com.collins.todo.ui.screens.authentication.forgotpassword.ForgotScreen
 import com.collins.todo.ui.screens.onboarding.OnboardingScreen
 import com.collins.todo.ui.screens.onboarding.SplashScreen
 import com.collins.todo.ui.screens.pages.manager.ManagerDashboard
+import com.collins.todo.ui.screens.pages.manager.ManagerFleetScreen
+import com.collins.todo.ui.screens.pages.transporter.TransporterHomeScreen
 import com.collins.todo.ui.screens.pages.transporter.TransporterConsole
 import com.collins.todo.ui.screens.pages.transporter.TransporterViewModel
+import com.collins.todo.ui.screens.pages.transporter.DriverMessagesScreen
 import com.collins.todo.ui.screens.pages.transporter.TrackingScreen
 import com.collins.todo.ui.screens.pages.transporter.TrackingViewModel
 import com.collins.todo.ui.screens.pages.profile.ProfileScreen
@@ -174,6 +177,7 @@ fun AppNavigation() {
                 onNavigateToMaterials = { navController.navigate(ROUTES.PROCUREMENT) },
                 onNavigateToTeam = { navController.navigate("team") },
                 onNavigateToAnalytics = { navController.navigate(ROUTES.ROI_ANALYZER) },
+                onNavigateToFleet = { navController.navigate(ROUTES.MANAGER_FLEET) },
                 onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) },
                 onAddProject = { navController.navigate(ROUTES.createProjectFormRoute()) },
                 onEditProject = { project ->
@@ -188,9 +192,17 @@ fun AppNavigation() {
                 onBack = { navController.popBackStack() }
             )
         }
+        composable(ROUTES.MANAGER_FLEET) {
+            val homeEntry = remember(it) { navController.getBackStackEntry(ROUTES.HOME) }
+            val homeViewModel: HomeViewModel = viewModel(homeEntry)
+            ManagerFleetScreen(
+                onBack = { navController.popBackStack() },
+                drivers = homeViewModel.drivers.value
+            )
+        }
         composable(ROUTES.TRANSPORTER_HOME) {
             val transporterViewModel: TransporterViewModel = viewModel()
-            TransporterConsole(
+            TransporterHomeScreen(
                 viewModel = transporterViewModel,
                 authViewModel = authViewModel,
                 onLogout = {
@@ -198,10 +210,15 @@ fun AppNavigation() {
                         popUpTo(ROUTES.TRANSPORTER_HOME) { inclusive = true }
                     }
                 },
-                onNavigateToTracking = { orderId ->
+                onNavigateToMessages = { navController.navigate(ROUTES.DRIVER_MESSAGES) },
+                onNavigateToTracking = { orderId: Int ->
                     navController.navigate("${ROUTES.TRACKING}/$orderId/false")
-                },
-                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) }
+                }
+            )
+        }
+        composable(ROUTES.DRIVER_MESSAGES) {
+            DriverMessagesScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable(ROUTES.PROFILE) {

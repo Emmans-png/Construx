@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(platform(libs.bom))
     implementation(libs.postgrest.kt)
+    implementation(libs.functions.kt)
     implementation(libs.auth.kt)
     implementation(libs.realtime.kt)
     implementation(libs.storage.kt)

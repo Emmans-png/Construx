@@ -6,8 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.collins.todo.data.Models.MaterialOrder
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,8 +35,6 @@ fun ProcurementScreen(
     val viewModel: ProcurementViewModel = viewModel()
     val orders by viewModel.orders
     val isLoading by viewModel.isLoading
-
-    var editingOrder by remember { mutableStateOf<MaterialOrder?>(null) }
 
     Scaffold(
         topBar = {
@@ -49,7 +49,12 @@ fun ProcurementScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.onSendMessageClick() }) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, "Message Driver", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -58,33 +63,37 @@ fun ProcurementScreen(
             )
         },
         floatingActionButton = {
-            var showAddOrder by remember { mutableStateOf(false) }
             FloatingActionButton(
-                onClick = { showAddOrder = true },
+                onClick = { viewModel.onAddOrderClick() },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Order")
             }
-            if (showAddOrder) {
-                AddOrderDialog(
-                    onDismiss = { showAddOrder = false },
-                    onOrderAdded = { viewModel.fetchOrders() }
-                )
-            }
-            editingOrder?.let { order ->
-                EditOrderDialog(
-                    order = order,
-                    onDismiss = { editingOrder = null },
-                    onOrderUpdated = { updatedOrder ->
-                        viewModel.updateOrder(updatedOrder)
-                        editingOrder = null
-                    }
-                )
-            }
         },
         containerColor = Color.Black
     ) { padding ->
+        if (viewModel.showAddOrder) {
+            AddOrderDialog(
+                viewModel = viewModel
+            )
+        }
+
+        if (viewModel.showSendMessage) {
+            SendMessageDialog(viewModel = viewModel)
+        }
+
+        viewModel.editingOrder?.let { order ->
+            EditOrderDialog(
+                order = order,
+                onDismiss = { viewModel.onDismissEditOrder() },
+                onOrderUpdated = { updatedOrder ->
+                    viewModel.updateOrder(updatedOrder)
+                    viewModel.onDismissEditOrder()
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -134,7 +143,7 @@ fun ProcurementScreen(
                             OrderCard(
                                 order = order,
                                 onTrack = { order.id?.let { onNavigateToLiveTracking(it) } },
-                                onEdit = { editingOrder = order },
+                                onEdit = { viewModel.onEditOrderClick(order) },
                                 onDelete = { order.id?.let { viewModel.deleteOrder(it) } }
                             )
                         }
@@ -143,6 +152,57 @@ fun ProcurementScreen(
             }
         }
     }
+}
+
+@Composable
+fun SendMessageDialog(viewModel: ProcurementViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    AlertDialog(
+        onDismissRequest = { viewModel.onDismissSendMessage() },
+        title = { Text("Send Message to Driver", color = Color.White) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box {
+                    OutlinedButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        val drivers = viewModel.drivers.value
+                        Text(drivers.find { it.id == viewModel.selectedDriverId }?.username ?: "Select Driver")
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        viewModel.drivers.value.forEach { driver ->
+                            DropdownMenuItem(
+                                text = { Text(driver.username) },
+                                onClick = {
+                                    viewModel.selectedDriverId = driver.id
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                TextField(
+                    value = viewModel.messageContent,
+                    onValueChange = { viewModel.messageContent = it },
+                    label = { Text("Message Content") },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    maxLines = 5
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = viewModel.selectedDriverId != null && viewModel.messageContent.isNotBlank(),
+                onClick = { viewModel.sendMessage() }
+            ) { Text("Send") }
+        },
+        dismissButton = { TextButton(onClick = { viewModel.onDismissSendMessage() }) { Text("Cancel") } }
+    )
 }
 
 @Composable
@@ -204,55 +264,34 @@ fun EditOrderDialog(
 
 @Composable
 fun AddOrderDialog(
-    projectId: Int? = null,
-    onDismiss: () -> Unit, 
-    onOrderAdded: () -> Unit
+    viewModel: ProcurementViewModel
 ) {
-    var materialName by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("Units") }
-    var stage by remember { mutableStateOf("Foundation") }
-    var supplier by remember { mutableStateOf("") }
-    var unitPrice by remember { mutableStateOf("") }
-    var selectedProjectId by remember { mutableStateOf(projectId) }
-    var projects by remember { mutableStateOf<List<com.collins.todo.data.Models.ConstructionProject>>(emptyList()) }
+    var expanded by remember { mutableStateOf(false) }
     
-    val scope = rememberCoroutineScope()
-    val repository = com.collins.todo.data.repository.ConstructionRepository()
-
-    LaunchedEffect(Unit) {
-        if (selectedProjectId == null) {
-            projects = repository.getProjects()
-            if (projects.isNotEmpty()) {
-                selectedProjectId = projects.first().id
-            }
-        }
-    }
-
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { viewModel.onDismissAddOrder() },
         title = { Text("New Material Order", color = Color.White) },
         containerColor = MaterialTheme.colorScheme.surface,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (projectId == null && projects.isNotEmpty()) {
+                if (viewModel.selectedProjectIdForNewOrder == null && viewModel.projects.value.isNotEmpty()) {
                     Text("Select Project", color = Color.White, fontSize = 12.sp)
-                    var expanded by remember { mutableStateOf(false) }
+                    var expandedProject by remember { mutableStateOf(false) }
                     Box {
                         OutlinedButton(
-                            onClick = { expanded = true },
+                            onClick = { expandedProject = true },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(4.dp)
                         ) {
-                            Text(projects.find { it.id == selectedProjectId }?.name ?: "Select Project")
+                            Text(viewModel.projects.value.find { it.id == viewModel.selectedProjectIdForNewOrder }?.name ?: "Select Project")
                         }
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            projects.forEach { p ->
+                        DropdownMenu(expanded = expandedProject, onDismissRequest = { expandedProject = false }) {
+                            viewModel.projects.value.forEach { p ->
                                 DropdownMenuItem(
                                     text = { Text(p.name) },
                                     onClick = {
-                                        selectedProjectId = p.id
-                                        expanded = false
+                                        viewModel.onAddOrderClick(p.id)
+                                        expandedProject = false
                                     }
                                 )
                             }
@@ -260,10 +299,10 @@ fun AddOrderDialog(
                     }
                 }
 
-                TextField(value = materialName, onValueChange = { materialName = it }, label = { Text("Material Name") })
-                TextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") })
-                TextField(value = unitPrice, onValueChange = { unitPrice = it }, label = { Text("Unit Price ($)") })
-                TextField(value = supplier, onValueChange = { supplier = it }, label = { Text("Supplier") })
+                TextField(value = viewModel.materialName, onValueChange = { viewModel.materialName = it }, label = { Text("Material Name") })
+                TextField(value = viewModel.quantity, onValueChange = { viewModel.quantity = it }, label = { Text("Quantity") })
+                TextField(value = viewModel.unitPrice, onValueChange = { viewModel.unitPrice = it }, label = { Text("Unit Price ($)") })
+                TextField(value = viewModel.supplier, onValueChange = { viewModel.supplier = it }, label = { Text("Supplier") })
                 
                 Text("Required Stage", color = Color.White, fontSize = 12.sp)
                 val stages = listOf("Foundation", "Walling", "Roofing", "Finishing")
@@ -274,8 +313,8 @@ fun AddOrderDialog(
                 ) {
                     stages.forEach { s ->
                         FilterChip(
-                            selected = stage == s,
-                            onClick = { stage = s },
+                            selected = viewModel.requiredStage == s,
+                            onClick = { viewModel.requiredStage = s },
                             label = { Text(s, fontSize = 10.sp) }
                         )
                     }
@@ -284,31 +323,11 @@ fun AddOrderDialog(
         },
         confirmButton = {
             Button(
-                enabled = selectedProjectId != null && materialName.isNotBlank(),
-                onClick = {
-                    scope.launch {
-                        try {
-                            repository.createMaterialOrder(
-                                com.collins.todo.data.Models.MaterialOrder(
-                                    projectId = selectedProjectId!!,
-                                    materialName = materialName,
-                                    quantity = quantity.toDoubleOrNull() ?: 0.0,
-                                    unit = unit,
-                                    unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
-                                    requiredStage = stage,
-                                    supplierName = supplier
-                                )
-                            )
-                            onOrderAdded()
-                            onDismiss()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
+                enabled = (viewModel.selectedProjectIdForNewOrder != null || viewModel.projects.value.isNotEmpty()) && viewModel.materialName.isNotBlank(),
+                onClick = { viewModel.createOrder() }
             ) { Text("Add Order") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = { viewModel.onDismissAddOrder() }) { Text("Cancel") } }
     )
 }
 

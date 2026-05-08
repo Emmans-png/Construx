@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -24,27 +25,25 @@ import androidx.compose.ui.unit.sp
 import com.collins.todo.data.Models.MaterialOrder
 import com.collins.todo.data.repository.SupabaseClient
 import com.collins.todo.ui.screens.authentication.login.AuthViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.jan.supabase.auth.auth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransporterHomeScreen(
+    viewModel: TransporterViewModel = viewModel(),
     authViewModel: AuthViewModel,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToMessages: () -> Unit = {},
+    onNavigateToTracking: (Int) -> Unit = {}
 ) {
     val currentUser = remember { SupabaseClient.client.auth.currentUserOrNull() }
     val displayUsername = remember(currentUser) { 
         currentUser?.userMetadata?.get("username")?.toString()?.removeSurrounding("\"") ?: "Transporter"
     }
 
-    // Comprehensive Trip Data
-    val allOrders = remember {
-        listOf(
-            MaterialOrder(id = 1, projectId = 101, materialName = "Cement", quantity = 50.0, unit = "Bags", unitPrice = 10.0, status = "Ongoing", requiredStage = "Foundation", supplierName = "Bamburi"),
-            MaterialOrder(id = 2, projectId = 102, materialName = "Steel Rods", quantity = 20.0, unit = "Pcs", unitPrice = 15.0, status = "Pending", requiredStage = "Walling", supplierName = "Devki Steel"),
-            MaterialOrder(id = 3, projectId = 103, materialName = "Sand", quantity = 5.0, unit = "Tonnes", unitPrice = 120.0, status = "Completed", requiredStage = "Finishing", supplierName = "Mlolongo Quarry")
-        )
-    }
+    val allOrders by viewModel.orders
+    val isLoading by viewModel.isLoading
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Ongoing", "Pending", "Completed")
@@ -54,11 +53,14 @@ fun TransporterHomeScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Logistics Portal", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
-                        Text("CONSTRUX LOGISTICS", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text("Logistics Portal", color = MaterialTheme.colorScheme.tertiary, fontSize = 10.sp)
+                        Text("CONSTRUX LOGISTICS", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 16.sp, letterSpacing = 1.sp)
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToMessages) {
+                        Icon(Icons.AutoMirrored.Filled.Message, "Messages", tint = Color.White)
+                    }
                     IconButton(onClick = { authViewModel.signOut(onLogout) }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, "Logout", tint = Color.White)
                     }
@@ -78,8 +80,8 @@ fun TransporterHomeScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatsCard("Active Trips", allOrders.count { it.status == "Ongoing" }.toString(), Icons.Default.LocalShipping, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                StatsCard("Total Earnings", "$2.4k", Icons.Default.Payments, Color(0xFF4CAF50), Modifier.weight(1f))
+                StatsCard("Active Trips", allOrders.count { it.status == "Ongoing" || it.status == "Dispatched" }.toString(), Icons.Default.LocalShipping, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                StatsCard("Total Earnings", "$${String.format("%,.0f", allOrders.filter { it.status == "Delivered" || it.status == "Completed" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Color(0xFF4CAF50), Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -115,9 +117,13 @@ fun TransporterHomeScreen(
 
             // Content List
             val filteredOrders = when (selectedTab) {
-                0 -> allOrders.filter { it.status == "Ongoing" }
+                0 -> allOrders.filter { it.status == "Ongoing" || it.status == "Dispatched" }
                 1 -> allOrders.filter { it.status == "Pending" }
-                else -> allOrders.filter { it.status == "Completed" }
+                else -> allOrders.filter { it.status == "Completed" || it.status == "Delivered" }
+            }
+
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             }
 
             LazyColumn(
@@ -133,7 +139,13 @@ fun TransporterHomeScreen(
                     }
                 } else {
                     items(filteredOrders) { order ->
-                        TripCard(order)
+                        TripCard(order, onAction = {
+                            if (order.status == "Pending" || order.status == "Dispatched") {
+                                order.id?.let { onNavigateToTracking(it) }
+                            } else if (order.status == "Ongoing") {
+                                order.id?.let { viewModel.updateOrderStatus(it, "Delivered") }
+                            }
+                        })
                     }
                 }
             }
@@ -177,7 +189,7 @@ fun StatsCard(label: String, value: String, icon: ImageVector, color: Color, mod
 }
 
 @Composable
-fun TripCard(order: MaterialOrder) {
+fun TripCard(order: MaterialOrder, onAction: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
@@ -200,9 +212,9 @@ fun TripCard(order: MaterialOrder) {
                 Spacer(modifier = Modifier.weight(1f))
                 
                 val statusColor = when(order.status) {
-                    "Ongoing" -> Color(0xFF2196F3)
+                    "Ongoing", "Dispatched" -> Color(0xFF2196F3)
                     "Pending" -> Color(0xFFFFA000)
-                    "Completed" -> Color(0xFF4CAF50)
+                    "Completed", "Delivered" -> Color(0xFF4CAF50)
                     else -> Color.Gray
                 }
                 
@@ -230,16 +242,16 @@ fun TripCard(order: MaterialOrder) {
                 TripPoint(label = "DROP-OFF", value = "Site #${order.projectId}", icon = Icons.Default.LocationOn, isStart = false)
             }
             
-            if (order.status != "Completed") {
+            if (order.status != "Completed" && order.status != "Delivered") {
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
-                    onClick = { /* Status action */ },
+                    onClick = onAction,
                     modifier = Modifier.fillMaxWidth().height(44.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
-                        if (order.status == "Pending") "START TRIP" else "MARK AS COMPLETED", 
+                        if (order.status == "Pending" || order.status == "Dispatched") "START TRIP" else "MARK AS COMPLETED",
                         fontWeight = FontWeight.Bold, 
                         fontSize = 13.sp
                     )

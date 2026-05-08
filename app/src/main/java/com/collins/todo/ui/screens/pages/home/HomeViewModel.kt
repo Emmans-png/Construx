@@ -1,7 +1,9 @@
 package com.collins.todo.ui.screens.pages.home
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.collins.todo.data.Models.ConstructionProject
@@ -29,6 +31,11 @@ class HomeViewModel: ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
+
+    // UI State for Dialogs
+    var showAddOrderDialog by mutableStateOf(false)
+    var selectedProjectIdForOrder by mutableStateOf<Int?>(null)
+    var editingOrder by mutableStateOf<MaterialOrder?>(null)
 
     init {
         refreshAll()

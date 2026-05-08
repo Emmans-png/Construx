@@ -103,9 +103,28 @@ class ConstructionRepository {
 
     suspend fun getTransporterOrders(): List<MaterialOrder> {
         val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        val profile = getUserProfile() ?: return emptyList()
         return supabase.from("material_orders").select {
-            filter { eq("transporter_id", user.id) }
+            filter {
+                or {
+                    eq("transporter_id", user.id)
+                    eq("organization_id", profile.organizationId ?: "")
+                }
+                neq("status", "Delivered")
+                neq("status", "Completed")
+            }
         }.decodeList<MaterialOrder>()
+    }
+
+    suspend fun getAllDrivers(): List<UserProfile> {
+        return try {
+            supabase.from("profiles").select {
+                filter { eq("role", "Transporter") }
+            }.decodeList<UserProfile>()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
     // Driver methods
@@ -130,5 +149,54 @@ class ConstructionRepository {
         return supabase.from("team_members").insert(member.copy(managerId = user.id)) {
             select()
         }.decodeSingleOrNull<com.collins.todo.data.Models.TeamMember>()
+    }
+
+    // Messaging methods
+    suspend fun sendMessage(message: com.collins.todo.data.Models.Message): Boolean {
+        return try {
+            supabase.from("messages").insert(message)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun getMessagesForUser(): List<com.collins.todo.data.Models.Message> {
+        val user = supabase.auth.currentUserOrNull() ?: return emptyList()
+        return try {
+            supabase.from("messages").select {
+                filter {
+                    or {
+                        eq("sender_id", user.id)
+                        eq("receiver_id", user.id)
+                    }
+                }
+            }.decodeList<com.collins.todo.data.Models.Message>()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getDriverLocation(driverId: String): com.collins.todo.data.Models.DriverLocation? {
+        return try {
+            supabase.from("driver_locations").select {
+                filter { eq("driver_id", driverId) }
+                order("updated_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                limit(1)
+            }.decodeSingleOrNull<com.collins.todo.data.Models.DriverLocation>()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun updateDriverLocation(location: com.collins.todo.data.Models.DriverLocation) {
+        try {
+            supabase.from("driver_locations").upsert(location)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import org.osmdroid.util.GeoPoint
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
 
 class TrackingViewModel : ViewModel() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -173,6 +175,18 @@ class TrackingViewModel : ViewModel() {
                         put("timestamp", System.currentTimeMillis())
                     }
                 )
+
+                // 3. Update Global Driver Location for Fleet View
+                val user = com.collins.todo.data.repository.SupabaseClient.client.auth.currentUserOrNull()
+                if (user != null) {
+                    com.collins.todo.data.repository.ConstructionRepository().updateDriverLocation(
+                        com.collins.todo.data.Models.DriverLocation(
+                            driverId = user.id,
+                            latitude = lat,
+                            longitude = lng
+                        )
+                    )
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

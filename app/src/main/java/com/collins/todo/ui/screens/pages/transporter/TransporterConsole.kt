@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +39,7 @@ fun TransporterConsole(
     authViewModel: AuthViewModel,
     onLogout: () -> Unit,
     onNavigateToTracking: (Int) -> Unit,
+    onNavigateToMessages: () -> Unit = {},
     onNavigateToProfile: () -> Unit
 ) {
     val orders by viewModel.orders
@@ -44,30 +47,19 @@ fun TransporterConsole(
     val isLoading by viewModel.isLoading
     val activeOrder = orders.find { it.status == "Ongoing" || it.status == "Dispatched" || it.status == "Arrived" || it.status == "Unloading" }
     val context = LocalContext.current
-
-    var showEstimateDialog by remember { mutableStateOf(false) }
-    var showDriversDialog by remember { mutableStateOf(false) }
-    var showNewTripDialog by remember { mutableStateOf(false) }
-    var estimatedDays by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
-    // Form states for New Trip
-    var material by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var projectSite by remember { mutableStateOf("") }
-    var supplier by remember { mutableStateOf("") }
-
-    if (showEstimateDialog && activeOrder != null) {
+    if (viewModel.showEstimateDialog && activeOrder != null) {
         AlertDialog(
-            onDismissRequest = { showEstimateDialog = false },
+            onDismissRequest = { viewModel.showEstimateDialog = false },
             title = { Text("Trip Estimate") },
             text = {
                 Column {
                     Text("How many days will it take to reach the site?")
                     Spacer(Modifier.height(8.dp))
                     TextField(
-                        value = estimatedDays,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) estimatedDays = it },
+                        value = viewModel.estimatedDays,
+                        onValueChange = { if (it.all { char -> char.isDigit() }) viewModel.estimatedDays = it },
                         label = { Text("Estimated Days") },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -75,56 +67,48 @@ fun TransporterConsole(
             },
             confirmButton = {
                 Button(onClick = {
-                    scope.launch {
-                        com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
-                            buildJsonObject {
-                                put("status", "Ongoing")
-                                put("estimated_days", estimatedDays.toIntOrNull() ?: 1)
-                            }
-                        ) {
-                            filter { eq("id", activeOrder.id ?: 0) }
-                        }
-                        showEstimateDialog = false
-                        onNavigateToTracking(activeOrder.id ?: 0)
-                        viewModel.fetchOrders()
+                    activeOrder.id?.let { id ->
+                        viewModel.updateOrderStatus(id, "Ongoing", viewModel.estimatedDays.toIntOrNull() ?: 1)
+                        viewModel.showEstimateDialog = false
+                        onNavigateToTracking(id)
                     }
                 }) { Text("Start Trip") }
             },
-            dismissButton = { TextButton(onClick = { showEstimateDialog = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { viewModel.showEstimateDialog = false }) { Text("Cancel") } }
         )
     }
 
-    if (showNewTripDialog) {
+    if (viewModel.showNewTripDialog) {
         AlertDialog(
-            onDismissRequest = { showNewTripDialog = false },
+            onDismissRequest = { viewModel.showNewTripDialog = false },
             title = { Text("Record New Trip", color = Color.White) },
             containerColor = MaterialTheme.colorScheme.surface,
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = material,
-                        onValueChange = { material = it },
+                        value = viewModel.material,
+                        onValueChange = { viewModel.material = it },
                         label = { Text("Material Name") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
                     )
                     OutlinedTextField(
-                        value = quantity,
-                        onValueChange = { quantity = it },
+                        value = viewModel.quantity,
+                        onValueChange = { viewModel.quantity = it },
                         label = { Text("Quantity") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
                     )
                     OutlinedTextField(
-                        value = projectSite,
-                        onValueChange = { projectSite = it },
+                        value = viewModel.projectSite,
+                        onValueChange = { viewModel.projectSite = it },
                         label = { Text("Project Site ID") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
                     )
                     OutlinedTextField(
-                        value = supplier,
-                        onValueChange = { supplier = it },
+                        value = viewModel.supplier,
+                        onValueChange = { viewModel.supplier = it },
                         label = { Text("Supplier Name") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
@@ -133,32 +117,72 @@ fun TransporterConsole(
             },
             confirmButton = {
                 Button(
-                    enabled = material.isNotBlank() && projectSite.isNotBlank(),
+                    enabled = viewModel.material.isNotBlank() && viewModel.projectSite.isNotBlank(),
                     onClick = {
                         scope.launch {
                             viewModel.createTrip(
                                 MaterialOrder(
-                                    projectId = projectSite.toIntOrNull() ?: 0,
-                                    materialName = material,
-                                    quantity = quantity.toDoubleOrNull() ?: 0.0,
+                                    projectId = viewModel.projectSite.toIntOrNull() ?: 0,
+                                    materialName = viewModel.material,
+                                    quantity = viewModel.quantity.toDoubleOrNull() ?: 0.0,
                                     unit = "Units",
                                     unitPrice = 0.0,
                                     status = "Ongoing",
                                     requiredStage = "Current",
-                                    supplierName = supplier
+                                    supplierName = viewModel.supplier
                                 )
                             )
-                            material = ""; quantity = ""; projectSite = ""; supplier = ""
-                            showNewTripDialog = false
+                            viewModel.material = ""; viewModel.quantity = ""; viewModel.projectSite = ""; viewModel.supplier = ""
+                            viewModel.showNewTripDialog = false
                         }
                     }
                 ) { Text("Create Trip") }
             },
             dismissButton = { 
                 TextButton(onClick = { 
-                    showNewTripDialog = false 
-                    material = ""; quantity = ""; projectSite = ""; supplier = ""
+                    viewModel.showNewTripDialog = false 
+                    viewModel.material = ""; viewModel.quantity = ""; viewModel.projectSite = ""; viewModel.supplier = ""
                 }) { Text("Cancel") } 
+            }
+        )
+    }
+
+    if (viewModel.showEditVehicleHealth) {
+        LaunchedEffect(Unit) {
+            viewModel.fuel = (authViewModel.currentUserProfile?.fuelLevel ?: 78).toString()
+            viewModel.serviceKm = (authViewModel.currentUserProfile?.nextServiceKm ?: 1240).toString()
+        }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.showEditVehicleHealth = false },
+            title = { Text("Update Vehicle Health", color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = viewModel.fuel,
+                        onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.fuel = it },
+                        label = { Text("Fuel Level (%)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    OutlinedTextField(
+                        value = viewModel.serviceKm,
+                        onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.serviceKm = it },
+                        label = { Text("Next Service (km)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.updateVehicleHealth(viewModel.fuel.toIntOrNull() ?: 0, viewModel.serviceKm.toIntOrNull() ?: 0)
+                    viewModel.showEditVehicleHealth = false
+                }) { Text("Save Changes") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.showEditVehicleHealth = false }) { Text("Cancel") }
             }
         )
     }
@@ -169,7 +193,7 @@ fun TransporterConsole(
                 title = { 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Logistics Portal", color = MaterialTheme.colorScheme.tertiary, fontSize = 10.sp)
-                        Text("TRANSPORTER CONSOLE", fontWeight = FontWeight.Black, letterSpacing = 1.sp) 
+                        Text("TRANSPORTER CONSOLE", fontWeight = FontWeight.Black, fontSize = 16.sp, letterSpacing = 1.sp) 
                     }
                 },
                 actions = {
@@ -189,7 +213,16 @@ fun TransporterConsole(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 FloatingActionButton(
-                    onClick = { showNewTripDialog = true },
+                    onClick = { viewModel.showVehicleSetupDialog = true },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.LocalShipping, "Vehicle Setup")
+                }
+
+                FloatingActionButton(
+                    onClick = { viewModel.showNewTripDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = CircleShape
@@ -198,12 +231,12 @@ fun TransporterConsole(
                 }
                 
                 FloatingActionButton(
-                    onClick = { /* Open Chat */ },
+                    onClick = onNavigateToMessages,
                     containerColor = MaterialTheme.colorScheme.secondary,
                     shape = CircleShape,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Chat, "Dispatch Chat")
+                    Icon(Icons.AutoMirrored.Filled.Chat, "Dispatch Chat")
                 }
             }
         },
@@ -245,33 +278,12 @@ fun TransporterConsole(
                     
                     item {
                         QuickActionBar(
-                            onArrived = {
-                                scope.launch {
-                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
-                                        buildJsonObject { put("status", "Arrived") }
-                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
-                                    viewModel.fetchOrders()
-                                }
-                            },
-                            onUnloading = {
-                                scope.launch {
-                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
-                                        buildJsonObject { put("status", "Unloading") }
-                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
-                                    viewModel.fetchOrders()
-                                }
-                            },
-                            onPOD = {
-                                scope.launch {
-                                    com.collins.todo.data.repository.SupabaseClient.client.from("material_orders").update(
-                                        buildJsonObject { put("status", "Delivered") }
-                                    ) { filter { eq("id", activeOrder.id ?: 0) } }
-                                    viewModel.fetchOrders()
-                                }
-                            },
+                            onArrived = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Arrived") } },
+                            onUnloading = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Unloading") } },
+                            onPOD = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Delivered") } },
                             onTrack = { 
                                 if (activeOrder.status == "Dispatched") {
-                                    showEstimateDialog = true 
+                                    viewModel.showEstimateDialog = true 
                                 } else {
                                     activeOrder.id?.let { onNavigateToTracking(it) }
                                 }
@@ -286,17 +298,54 @@ fun TransporterConsole(
 
                 // Vehicle Status Card
                 item {
-                    VehicleStatusCard()
+                    VehicleStatusCard(
+                        fuelLevel = authViewModel.currentUserProfile?.fuelLevel ?: 78,
+                        serviceKm = authViewModel.currentUserProfile?.nextServiceKm ?: 1240,
+                        onEdit = { viewModel.showEditVehicleHealth = true }
+                    )
                 }
 
                 item {
-                    FleetSummaryCard(drivers.size) { showDriversDialog = true }
+                    FleetSummaryCard(drivers.size) { viewModel.showDriversDialog = true }
                 }
 
                 item {
                     Text("Trip History", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
                 
+                if (viewModel.showVehicleSetupDialog) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel.showVehicleSetupDialog = false },
+                        title = { Text("Vehicle Registration", color = Color.White) },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Register the vehicle for this transport period.", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                                OutlinedTextField(
+                                    value = viewModel.vehiclePlate,
+                                    onValueChange = { viewModel.vehiclePlate = it },
+                                    label = { Text("License Plate Number") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                                )
+                                OutlinedTextField(
+                                    value = viewModel.vehicleModel,
+                                    onValueChange = { viewModel.vehicleModel = it },
+                                    label = { Text("Vehicle Model (e.g. Isuzu FSR)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = { viewModel.updateVehicleDetails() }) { Text("Save Vehicle") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.showVehicleSetupDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
+
                 val history = orders.filter { it.status == "Delivered" || it.status == "Completed" }
                 if (history.isEmpty() && activeOrder == null) {
                     item { 
@@ -312,9 +361,9 @@ fun TransporterConsole(
         }
     }
 
-    if (showDriversDialog) {
+    if (viewModel.showDriversDialog) {
         AlertDialog(
-            onDismissRequest = { showDriversDialog = false },
+            onDismissRequest = { viewModel.showDriversDialog = false },
             title = { Text("Company Fleet", color = Color.White) },
             containerColor = MaterialTheme.colorScheme.surface,
             text = {
@@ -339,7 +388,7 @@ fun TransporterConsole(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDriversDialog = false }) { Text("Close") }
+                TextButton(onClick = { viewModel.showDriversDialog = false }) { Text("Close") }
             }
         )
     }
@@ -362,14 +411,23 @@ fun TransporterStatCard(label: String, value: String, icon: ImageVector, modifie
 }
 
 @Composable
-fun VehicleStatusCard() {
+fun VehicleStatusCard(fuelLevel: Int, serviceKm: Int, onEdit: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text("Vehicle Health", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Vehicle Health", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, "Edit Health", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.LocalGasStation, null, tint = Color(0xFFFFA000), modifier = Modifier.size(20.dp))
@@ -377,11 +435,11 @@ fun VehicleStatusCard() {
                 Column(Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Fuel Level", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
-                        Text("78%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("$fuelLevel%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { 0.78f },
+                        progress = { fuelLevel / 100f },
                         modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
                         color = Color(0xFFFFA000),
                         trackColor = Color.White.copy(alpha = 0.1f)
@@ -392,7 +450,7 @@ fun VehicleStatusCard() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.SettingsInputComponent, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
-                Text("Next Service: in 1,240 km", color = Color.White, fontSize = 13.sp)
+                Text("Next Service: in $serviceKm km", color = Color.White, fontSize = 13.sp)
             }
         }
     }
