@@ -11,7 +11,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.collins.todo.data.repository.SupabaseClient
 import com.collins.todo.ui.screens.authentication.login.AuthViewModel
+import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.launch
 
 @Composable
 fun OrganizationEntryScreen(
@@ -19,6 +22,7 @@ fun OrganizationEntryScreen(
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -110,7 +114,26 @@ fun OrganizationEntryScreen(
                         if (viewModel.organizationId.isBlank()) {
                             viewModel.organizationId = "ORG-${System.currentTimeMillis()}-${(1000..9999).random()}"
                         }
-                        onNext()
+                        
+                        // Sync to organizations table
+                        scope.launch {
+                            try {
+                                println("Syncing organization: ${viewModel.organizationName}")
+                                SupabaseClient.client.from("organizations").upsert(
+                                    com.collins.todo.data.Models.Organization(
+                                        id = viewModel.organizationId,
+                                        name = viewModel.organizationName,
+                                        industryType = viewModel.industryType,
+                                        location = viewModel.location
+                                    )
+                                )
+                                println("Organization synced successfully.")
+                            } catch (e: Exception) {
+                                println("Organization sync failed: ${e.message}")
+                                e.printStackTrace()
+                            }
+                            onNext()
+                        }
                     } else {
                         viewModel.errorMessage = "Please fill in all fields"
                     }
@@ -128,7 +151,7 @@ fun OrganizationEntryScreen(
             }
 
             TextButton(onClick = onBack) {
-                Text("Back to Login", color = Color.White)
+                Text("Back", color = Color.White)
             }
         }
     }

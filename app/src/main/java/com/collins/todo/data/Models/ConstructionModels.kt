@@ -8,6 +8,8 @@ data class ConstructionProject(
     val id: Int? = null,
     @SerialName("user_id")
     val userId: String? = null,
+    @SerialName("organization_id")
+    val organizationId: String? = null,
     val name: String,
     val location: String,
     @SerialName("total_budget")
@@ -31,11 +33,15 @@ data class MaterialOrder(
     val unit: String,
     @SerialName("unit_price")
     val unitPrice: Double,
-    val status: String = "Pending", // Pending, Dispatched, Delivered
+    val status: String = "Pending", // Pending, Dispatched, Delivered, Ongoing
     @SerialName("required_stage")
     val requiredStage: String,
     @SerialName("supplier_name")
-    val supplierName: String
+    val supplierName: String,
+    @SerialName("transporter_id")
+    val transporterId: String? = null,
+    @SerialName("estimated_days")
+    val estimatedDays: Int? = null
 )
 
 @Serializable

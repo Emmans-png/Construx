@@ -62,3 +62,12 @@ data class Profile(
     @SerialName("created_at")
     val createdAt: String? = null
 )
+
+@Serializable
+data class Organization(
+    val id: String,
+    val name: String,
+    @SerialName("industry_type")
+    val industryType: String? = null,
+    val location: String? = null
+)

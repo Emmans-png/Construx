@@ -10,6 +10,8 @@ object ROUTES {
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
     const val TRANSPORTER_HOME = "transporter_home"
+    const val TRACKING = "tracking"
+    const val PROFILE = "profile"
     const val PROCUREMENT = "procurement"
     const val ROI_ANALYZER = "roi_analyzer"
     const val ABOUT = "about"

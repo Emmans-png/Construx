@@ -1,8 +1,10 @@
 package com.collins.todo.ui.screens.navigation
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,6 +32,10 @@ import com.collins.todo.ui.screens.onboarding.SplashScreen
 import com.collins.todo.ui.screens.pages.manager.ManagerDashboard
 import com.collins.todo.ui.screens.pages.transporter.TransporterConsole
 import com.collins.todo.ui.screens.pages.transporter.TransporterViewModel
+import com.collins.todo.ui.screens.pages.transporter.TrackingScreen
+import com.collins.todo.ui.screens.pages.transporter.TrackingViewModel
+import com.collins.todo.ui.screens.pages.profile.ProfileScreen
+import com.collins.todo.ui.screens.pages.profile.ProfileViewModel
 import com.collins.todo.ui.screens.pages.team.TeamScreen
 import com.collins.todo.ui.screens.pages.team.TeamViewModel
 import io.github.jan.supabase.auth.auth
@@ -38,11 +44,12 @@ import io.github.jan.supabase.auth.auth
 fun AppNavigation() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
 
     NavHost(navController = navController, startDestination = ROUTES.SPLASH) {
         composable(ROUTES.SPLASH) {
             SplashScreen(
-                onFinished = { isLoggedIn ->
+                onFinished = { isLoggedIn, _ ->
                     if (isLoggedIn) {
                         val role = authViewModel.getUserRole()
                         val destination = if (role == "Transporter") ROUTES.TRANSPORTER_HOME else ROUTES.HOME
@@ -50,6 +57,7 @@ fun AppNavigation() {
                             popUpTo(ROUTES.SPLASH) { inclusive = true }
                         }
                     } else {
+                        // Always go to LOGIN, skipping onboarding on launch
                         navController.navigate(ROUTES.LOGIN) {
                             popUpTo(ROUTES.SPLASH) { inclusive = true }
                         }
@@ -60,7 +68,7 @@ fun AppNavigation() {
         composable(ROUTES.ONBOARDING) {
             OnboardingScreen(
                 onFinished = {
-                    navController.navigate(ROUTES.ORGANIZATION_ENTRY) {
+                    navController.navigate(ROUTES.ROLE_SELECTION) {
                         popUpTo(ROUTES.ONBOARDING) { inclusive = true }
                     }
                 }
@@ -71,6 +79,7 @@ fun AppNavigation() {
                 viewModel = authViewModel,
                 onNavigateToRegister = {
                     authViewModel.clearState()
+                    // Start onboarding when clicking "Sign Up"
                     navController.navigate(ROUTES.ONBOARDING)
                 },
                 onNavigateToForgot = {
@@ -91,7 +100,7 @@ fun AppNavigation() {
             OrganizationEntryScreen(
                 viewModel = authViewModel,
                 onNext = {
-                    navController.navigate(ROUTES.ROLE_SELECTION)
+                    navController.navigate(ROUTES.REGISTER)
                 },
                 onBack = {
                     navController.popBackStack()
@@ -102,7 +111,11 @@ fun AppNavigation() {
             RoleSelectionScreen(
                 viewModel = authViewModel,
                 onNext = {
-                    navController.navigate(ROUTES.REGISTER)
+                    if (authViewModel.role == "Transporter") {
+                        navController.navigate(ROUTES.REGISTER)
+                    } else {
+                        navController.navigate(ROUTES.ORGANIZATION_ENTRY)
+                    }
                 },
                 onBack = {
                     navController.popBackStack()
@@ -150,7 +163,8 @@ fun AppNavigation() {
                 onNavigateToProjects = { /* Already here */ },
                 onNavigateToMaterials = { navController.navigate(ROUTES.PROCUREMENT) },
                 onNavigateToTeam = { navController.navigate("team") },
-                onNavigateToAnalytics = { navController.navigate(ROUTES.ROI_ANALYZER) }
+                onNavigateToAnalytics = { navController.navigate(ROUTES.ROI_ANALYZER) },
+                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) }
             )
         }
         composable("team") {
@@ -169,7 +183,40 @@ fun AppNavigation() {
                     navController.navigate(ROUTES.LOGIN) {
                         popUpTo(ROUTES.TRANSPORTER_HOME) { inclusive = true }
                     }
+                },
+                onNavigateToTracking = { orderId ->
+                    navController.navigate("${ROUTES.TRACKING}/$orderId/false")
+                },
+                onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) }
+            )
+        }
+        composable(ROUTES.PROFILE) {
+            val profileViewModel: ProfileViewModel = viewModel()
+            ProfileScreen(
+                viewModel = profileViewModel,
+                onBack = { navController.popBackStack() },
+                onDeleteAccount = {
+                    navController.navigate(ROUTES.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
+            )
+        }
+        composable(
+            route = "${ROUTES.TRACKING}/{orderId}/{isViewer}",
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.IntType },
+                navArgument("isViewer") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getInt("orderId")
+            val isViewer = backStackEntry.arguments?.getBoolean("isViewer") ?: false
+            val trackingViewModel: TrackingViewModel = viewModel()
+            TrackingScreen(
+                viewModel = trackingViewModel,
+                onBack = { navController.popBackStack() },
+                orderId = orderId,
+                isViewer = isViewer
             )
         }
         composable(
@@ -211,6 +258,9 @@ fun AppNavigation() {
             ProcurementScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onNavigateToLiveTracking = { orderId ->
+                    navController.navigate("${ROUTES.TRACKING}/$orderId/true")
                 }
             )
         }

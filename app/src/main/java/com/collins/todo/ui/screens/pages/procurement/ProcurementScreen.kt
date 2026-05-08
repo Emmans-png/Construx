@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,11 +27,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProcurementScreen(
     onBack: () -> Unit,
+    onNavigateToLiveTracking: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProcurementViewModel = viewModel()
     val orders by viewModel.orders
     val isLoading by viewModel.isLoading
+
+    var editingOrder by remember { mutableStateOf<MaterialOrder?>(null) }
 
     Scaffold(
         topBar = {
@@ -65,6 +70,16 @@ fun ProcurementScreen(
                 AddOrderDialog(
                     onDismiss = { showAddOrder = false },
                     onOrderAdded = { viewModel.fetchOrders() }
+                )
+            }
+            editingOrder?.let { order ->
+                EditOrderDialog(
+                    order = order,
+                    onDismiss = { editingOrder = null },
+                    onOrderUpdated = { updatedOrder ->
+                        viewModel.updateOrder(updatedOrder)
+                        editingOrder = null
+                    }
                 )
             }
         },
@@ -116,13 +131,75 @@ fun ProcurementScreen(
                             }
                         }
                         items(stageOrders) { order ->
-                            OrderCard(order)
+                            OrderCard(
+                                order = order,
+                                onTrack = { order.id?.let { onNavigateToLiveTracking(it) } },
+                                onEdit = { editingOrder = order },
+                                onDelete = { order.id?.let { viewModel.deleteOrder(it) } }
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun EditOrderDialog(
+    order: MaterialOrder,
+    onDismiss: () -> Unit,
+    onOrderUpdated: (MaterialOrder) -> Unit
+) {
+    var materialName by remember { mutableStateOf(order.materialName) }
+    var quantity by remember { mutableStateOf(order.quantity.toString()) }
+    var unitPrice by remember { mutableStateOf(order.unitPrice.toString()) }
+    var supplier by remember { mutableStateOf(order.supplierName) }
+    var status by remember { mutableStateOf(order.status) }
+    
+    val statuses = listOf("Pending", "Dispatched", "Ongoing", "Delivered")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Material Order", color = Color.White) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextField(value = materialName, onValueChange = { materialName = it }, label = { Text("Material Name") })
+                TextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") })
+                TextField(value = unitPrice, onValueChange = { unitPrice = it }, label = { Text("Unit Price ($)") })
+                TextField(value = supplier, onValueChange = { supplier = it }, label = { Text("Supplier") })
+                
+                Text("Status", color = Color.White, fontSize = 12.sp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    statuses.forEach { s ->
+                        FilterChip(
+                            selected = status == s,
+                            onClick = { status = s },
+                            label = { Text(s, fontSize = 10.sp) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onOrderUpdated(
+                    order.copy(
+                        materialName = materialName,
+                        quantity = quantity.toDoubleOrNull() ?: order.quantity,
+                        unitPrice = unitPrice.toDoubleOrNull() ?: order.unitPrice,
+                        supplierName = supplier,
+                        status = status
+                    )
+                )
+            }) { Text("Update Order") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable
@@ -192,41 +269,74 @@ fun AddOrderDialog(onDismiss: () -> Unit, onOrderAdded: () -> Unit) {
 }
 
 @Composable
-fun OrderCard(order: MaterialOrder) {
+fun OrderCard(
+    order: MaterialOrder,
+    onTrack: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(order.materialName, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Supplier: ${order.supplierName}", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
-                Text("${order.quantity} ${order.unit} @ $${order.unitPrice}", color = Color.White, fontSize = 14.sp)
-            }
-            Surface(
-                color = when (order.status) {
-                    "Delivered" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                    "Dispatched" -> Color(0xFF2196F3).copy(alpha = 0.2f)
-                    else -> Color(0xFFFFA000).copy(alpha = 0.2f)
-                },
-                shape = RoundedCornerShape(4.dp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    order.status,
+                Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(order.materialName, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Supplier: ${order.supplierName}", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                    Text("${order.quantity} ${order.unit} @ $${order.unitPrice}", color = Color.White, fontSize = 14.sp)
+                    if (order.estimatedDays != null) {
+                        Text("ETA: ${order.estimatedDays} days", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, "Edit", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    }
+                }
+
+                Surface(
                     color = when (order.status) {
-                        "Delivered" -> Color(0xFF4CAF50)
-                        "Dispatched" -> Color(0xFF2196F3)
-                        else -> Color(0xFFFFA000)
+                        "Delivered" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                        "Dispatched" -> Color(0xFF2196F3).copy(alpha = 0.2f)
+                        "Ongoing" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        else -> Color(0xFFFFA000).copy(alpha = 0.2f)
                     },
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        order.status,
+                        color = when (order.status) {
+                            "Delivered" -> Color(0xFF4CAF50)
+                            "Dispatched" -> Color(0xFF2196F3)
+                            "Ongoing" -> MaterialTheme.colorScheme.primary
+                            else -> Color(0xFFFFA000)
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            if (order.status == "Ongoing" || order.status == "Dispatched") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onTrack,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("VIEW LIVE MOVEMENT", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

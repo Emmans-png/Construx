@@ -45,6 +45,15 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 dependencies {
+    dependencies {
+        // OpenStreetMap library (No API key needed)
+        implementation(libs.osmdroid.android)
+
+        // Google's location service (Free to use for GPS coordinates)
+        implementation(libs.play.services.location.v2101)
+    }
+
+    implementation(libs.play.services.location)
     implementation(libs.androidx.core.splashscreen)
     implementation(platform(libs.bom))
     implementation(libs.postgrest.kt)
@@ -56,8 +65,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
-    
-    implementation("androidx.navigation:navigation-compose:2.8.5")
+
+    implementation(libs.navigation.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -67,9 +76,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation("androidx.compose.material:material-icons-extended")
-    
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation(libs.androidx.compose.material.icons.extended)
+
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

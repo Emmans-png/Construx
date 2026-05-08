@@ -2,7 +2,9 @@ package com.collins.todo.ui.screens.authentication.signup
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.collins.todo.ui.screens.authentication.login.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
@@ -27,6 +30,11 @@ fun RegisterScreen(
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var showOrgDropdown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchAvailableOrganizations()
+    }
 
     Box(
         modifier = Modifier
@@ -36,7 +44,8 @@ fun RegisterScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -58,6 +67,48 @@ fun RegisterScreen(
             )
             
             Spacer(modifier = Modifier.height(32.dp))
+
+            if (viewModel.role == "Transporter") {
+                // Organization Selection for Transporters
+                ExposedDropdownMenuBox(
+                    expanded = showOrgDropdown,
+                    onExpandedChange = { showOrgDropdown = !showOrgDropdown },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextField(
+                        value = viewModel.organizationName.ifBlank { "Select Organization/Company" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Affiliated Company") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showOrgDropdown) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.textFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = showOrgDropdown,
+                        onDismissRequest = { showOrgDropdown = false }
+                    ) {
+                        if (viewModel.availableOrganizations.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No organizations found") },
+                                onClick = { showOrgDropdown = false }
+                            )
+                        }
+                        viewModel.availableOrganizations.forEach { (name, id) ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    viewModel.organizationName = name
+                                    viewModel.organizationId = id
+                                    showOrgDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             TextField(
                 value = viewModel.username,

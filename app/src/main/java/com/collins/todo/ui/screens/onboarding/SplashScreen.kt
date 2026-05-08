@@ -1,5 +1,6 @@
 package com.collins.todo.ui.screens.onboarding
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,12 +22,15 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    onFinished: (Boolean) -> Unit // Boolean: true if logged in
+    onFinished: (Boolean, Boolean) -> Unit // Boolean: isLoggedIn, isFirstLaunch
 ) {
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
         delay(2000) // Show for 2 seconds
         val session = SupabaseClient.client.auth.currentSessionOrNull()
-        onFinished(session != null)
+        val sharedPref = context.getSharedPreferences("onboarding", Context.MODE_PRIVATE)
+        val isFirstLaunch = sharedPref.getBoolean("isFirstLaunch", true)
+        onFinished(session != null, isFirstLaunch)
     }
 
     Box(
