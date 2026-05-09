@@ -192,18 +192,20 @@ fun ManagerDashboard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Live Order Flow", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Cleared Orders", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
 
+            val clearedOrders = orders.filter { it.status == "Delivered" || it.status == "Completed" }
+
             if (isLoading) {
                 // Already shown above if loading
-            } else if (orders.isEmpty()) {
+            } else if (clearedOrders.isEmpty()) {
                 item { 
-                    Text("No active orders found.", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(vertical = 8.dp))
+                    Text("No cleared orders found.", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(vertical = 8.dp))
                 }
             } else {
-                items(orders.take(5)) { order ->
+                items(clearedOrders.take(5)) { order ->
                     OrderFlowItem(
                         order = order,
                         onEdit = { procurementViewModel.onEditOrderClick(order) },

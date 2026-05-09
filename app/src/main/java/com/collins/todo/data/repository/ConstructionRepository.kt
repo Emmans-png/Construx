@@ -85,14 +85,23 @@ class ConstructionRepository {
         }.decodeList<MaterialOrder>()
 
     suspend fun createMaterialOrder(order: MaterialOrder): MaterialOrder? {
+        val user = supabase.auth.currentUserOrNull() ?: return null
+        
         return try {
-            val result = supabase.from("material_orders").insert(order) {
+            val orderWithUser = order.copy(
+                userId = user.id,
+                organizationId = order.organizationId
+            )
+            println("DEBUG_INSERT: Attempting to insert order: $orderWithUser")
+            val response = supabase.from("material_orders").insert(orderWithUser) {
                 select()
-            }.decodeSingleOrNull<MaterialOrder>()
+            }
+            val result = response.decodeSingleOrNull<MaterialOrder>()
             println("REPOSITORY_SUCCESS: Created order with ID: ${result?.id}")
             result
         } catch (e: Exception) {
             println("REPOSITORY_ERROR: Failed to create order: ${e.message}")
+            // Log the full exception to help identify specific database errors
             e.printStackTrace()
             null
         }

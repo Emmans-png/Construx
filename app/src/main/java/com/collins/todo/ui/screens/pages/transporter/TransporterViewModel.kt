@@ -151,7 +151,12 @@ class TransporterViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val user = com.collins.todo.data.repository.SupabaseClient.client.auth.currentUserOrNull()
-                repository.createMaterialOrder(order.copy(transporterId = user?.id))
+                // Ensure userId and transporterId are set for the driver creating the trip
+                val orderWithUser = order.copy(
+                    userId = user?.id,
+                    transporterId = user?.id
+                )
+                repository.createMaterialOrder(orderWithUser)
                 fetchOrders()
             } catch (e: Exception) {
                 e.printStackTrace()

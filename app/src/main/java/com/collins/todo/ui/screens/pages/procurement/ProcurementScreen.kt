@@ -171,6 +171,7 @@ fun EditOrderDialog(
     var unitPrice by remember { mutableStateOf(order.unitPrice.toString()) }
     var supplier by remember { mutableStateOf(order.supplierName) }
     var status by remember { mutableStateOf(order.status) }
+    var earnings by remember { mutableStateOf(order.earnings?.toString() ?: "") }
     
     val statuses = listOf("Pending", "Dispatched", "Ongoing", "Delivered")
 
@@ -184,6 +185,7 @@ fun EditOrderDialog(
                 TextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") })
                 TextField(value = unitPrice, onValueChange = { unitPrice = it }, label = { Text("Unit Price ($)") })
                 TextField(value = supplier, onValueChange = { supplier = it }, label = { Text("Supplier") })
+                TextField(value = earnings, onValueChange = { earnings = it }, label = { Text("Earnings for Driver ($)") })
                 
                 Text("Status", color = Color.White, fontSize = 12.sp)
                 FlowRow(
@@ -208,7 +210,8 @@ fun EditOrderDialog(
                         quantity = quantity.toDoubleOrNull() ?: order.quantity,
                         unitPrice = unitPrice.toDoubleOrNull() ?: order.unitPrice,
                         supplierName = supplier,
-                        status = status
+                        status = status,
+                        earnings = earnings.toDoubleOrNull()
                     )
                 )
             }) { Text("Update Order") }

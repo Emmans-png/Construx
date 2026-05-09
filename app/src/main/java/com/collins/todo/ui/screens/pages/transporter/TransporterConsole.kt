@@ -344,7 +344,7 @@ fun TransporterConsole(
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TransporterStatCard("Total Trips", "${orders.size}", Icons.Default.Route, Modifier.weight(1f))
-                        TransporterStatCard("Earnings", "$${String.format(java.util.Locale.getDefault(), "%,.0f", orders.filter { it.status == "Delivered" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Modifier.weight(1f))
+                        TransporterStatCard("Earnings", "$${String.format(java.util.Locale.getDefault(), "%,.0f", orders.filter { it.status == "Delivered" || it.status == "Completed" }.sumOf { it.earnings ?: 0.0 })}", Icons.Default.Payments, Modifier.weight(1f))
                     }
                 }
 
@@ -565,6 +565,9 @@ fun HistoryCard(order: MaterialOrder) {
             Column(Modifier.weight(1f)) {
                 Text(order.materialName, color = Color.White, fontWeight = FontWeight.Bold)
                 Text("To Site #${order.projectId}", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                if (order.earnings != null) {
+                    Text("Earned: $${order.earnings}", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
             Surface(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),

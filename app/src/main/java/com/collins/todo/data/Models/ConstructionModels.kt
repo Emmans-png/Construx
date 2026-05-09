@@ -25,6 +25,8 @@ data class ConstructionProject(
 @Serializable
 data class MaterialOrder(
     val id: Int? = null,
+    @SerialName("user_id")
+    val userId: String? = null,
     @SerialName("project_id")
     val projectId: Int,
     @SerialName("material_name")
@@ -43,7 +45,8 @@ data class MaterialOrder(
     @SerialName("organization_id")
     val organizationId: String? = null,
     @SerialName("estimated_days")
-    val estimatedDays: Int? = null
+    val estimatedDays: Int? = null,
+    val earnings: Double? = null
 )
 
 @Serializable

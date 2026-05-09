@@ -4,16 +4,17 @@ import android.Manifest
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -64,7 +65,14 @@ fun TrackingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isViewer) "Live Logistics Tracking" else "Movement Tracker") },
+                title = { 
+                    Column {
+                        Text(if (isViewer) "Live Logistics Tracking" else "Movement Tracker", fontSize = 16.sp)
+                        if (currentLocation != null) {
+                            Text("Lat: ${currentLocation?.latitude?.toString()?.take(7)}, Lng: ${currentLocation?.longitude?.toString()?.take(7)}", fontSize = 10.sp, color = MaterialTheme.colorScheme.tertiary)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -72,7 +80,7 @@ fun TrackingScreen(
                 },
                 actions = {
                     if (isTracking || isViewer) {
-                        Text(if (isViewer) "Monitoring" else "Live", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 16.dp))
+                        Text(if (isViewer) "Monitoring" else "Live", color = Color.Red, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 16.dp))
                     }
                 }
             )
@@ -84,38 +92,38 @@ fun TrackingScreen(
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
-                        controller.setZoom(18.0)
+                        zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+                        controller.setZoom(16.0)
                         
-                        // Initial center if needed, though it will follow location
+                        // Set map to dark mode if possible or just standard
+                        isTilesScaledToDpi = true
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { mapView ->
                     mapView.overlays.clear()
 
-                    // Draw Polyline (Breadcrumbs/History)
+                    // Draw Path (History)
                     if (pathPoints.isNotEmpty()) {
                         val polyline = Polyline(mapView)
                         polyline.setPoints(pathPoints)
-                        polyline.outlinePaint.color = android.graphics.Color.BLUE
-                        polyline.outlinePaint.strokeWidth = 10f
+                        polyline.outlinePaint.color = android.graphics.Color.RED // Logistics Red
+                        polyline.outlinePaint.strokeWidth = 8f
                         mapView.overlays.add(polyline)
                     }
 
-                    // Draw Current Position Marker
+                    // Draw Current Position
                     currentLocation?.let { point ->
                         val marker = Marker(mapView)
                         marker.position = point
                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        marker.title = if (isViewer) "Transporter's Current Position" else "My Position"
+                        marker.title = if (isViewer) "Driver" else "My Truck"
                         
-                        // Use a different icon for viewer if available
-                        // marker.icon = ... 
-
+                        // Custom Marker Icon (Optional - using default for now)
                         mapView.overlays.add(marker)
 
-                        // Center map on current location if it's the first time or if requested
-                        // mapView.controller.animateTo(point)
+                        // Auto-center on current location
+                        mapView.controller.animateTo(point)
                     }
 
                     mapView.invalidate()
