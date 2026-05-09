@@ -31,6 +31,9 @@ class TransporterViewModel : ViewModel() {
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
+    private val _unreadMessageCount = mutableStateOf(0)
+    val unreadMessageCount: State<Int> = _unreadMessageCount
+
     // UI State for Dialogs
     var showEstimateDialog by mutableStateOf(false)
     var showDriversDialog by mutableStateOf(false)
@@ -56,6 +59,7 @@ class TransporterViewModel : ViewModel() {
     init {
         fetchOrders()
         fetchDrivers()
+        fetchUnreadCount()
         setupRealtime()
     }
 
@@ -73,18 +77,41 @@ class TransporterViewModel : ViewModel() {
     }
 
     private fun setupRealtime() {
-        val channel = SupabaseClient.client.channel("transporter_orders_sync")
-        val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+        val channel = SupabaseClient.client.channel("transporter_sync")
+        
+        // Listen for order changes
+        channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "material_orders"
-        }
-
-        flow.onEach {
+        }.onEach {
             fetchOrders()
+        }.launchIn(viewModelScope)
+
+        // Listen for message changes
+        channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "messages"
+        }.onEach {
+            fetchUnreadCount()
         }.launchIn(viewModelScope)
 
         viewModelScope.launch {
             channel.subscribe()
         }
+    }
+
+    fun fetchUnreadCount() {
+        viewModelScope.launch {
+            try {
+                val user = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
+                val messages = repository.getMessagesForUser()
+                _unreadMessageCount.value = messages.count { it.receiverId == user.id && !it.isRead }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun clearUnreadCount() {
+        _unreadMessageCount.value = 0
     }
 
     fun fetchOrders() {

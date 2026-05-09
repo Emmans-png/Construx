@@ -32,6 +32,9 @@ class HomeViewModel: ViewModel() {
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
+    private val _unreadMessageCount = mutableStateOf(0)
+    val unreadMessageCount: State<Int> = _unreadMessageCount
+
     // UI State for Dialogs
     var showAddOrderDialog by mutableStateOf(false)
     var selectedProjectIdForOrder by mutableStateOf<Int?>(null)
@@ -39,6 +42,7 @@ class HomeViewModel: ViewModel() {
 
     init {
         refreshAll()
+        fetchUnreadCount()
         setupRealtime()
     }
 
@@ -64,11 +68,35 @@ class HomeViewModel: ViewModel() {
             fetchDrivers()
         }.launchIn(viewModelScope)
 
+        val messageChannel = SupabaseClient.client.channel("home_messages_sync")
+        messageChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "messages"
+        }.onEach {
+            fetchUnreadCount()
+        }.launchIn(viewModelScope)
+
         viewModelScope.launch {
             projectChannel.subscribe()
             orderChannel.subscribe()
             profileChannel.subscribe()
+            messageChannel.subscribe()
         }
+    }
+
+    fun fetchUnreadCount() {
+        viewModelScope.launch {
+            try {
+                val profile = repository.getUserProfile() ?: return@launch
+                val messages = repository.getMessagesForUser()
+                _unreadMessageCount.value = messages.count { it.receiverId == profile.id && !it.isRead }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun clearUnreadCount() {
+        _unreadMessageCount.value = 0
     }
 
     fun refreshAll() {
@@ -81,9 +109,14 @@ class HomeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val profile = repository.getUserProfile()
-                profile?.organizationId?.let { orgId ->
+                val orgId = profile?.organizationId
+                if (!orgId.isNullOrBlank()) {
                     _drivers.value = repository.getDriversByOrganization(orgId)
+                } else {
+                    // Fallback to show all transporters if organization is not set yet
+                    _drivers.value = repository.getAllDrivers()
                 }
+                println("DEBUG: Found ${_drivers.value.size} drivers")
             } catch (e: Exception) {
                 e.printStackTrace()
             }

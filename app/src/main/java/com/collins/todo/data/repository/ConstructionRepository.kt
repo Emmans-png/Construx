@@ -194,6 +194,23 @@ class ConstructionRepository {
         }
     }
 
+    suspend fun markMessagesAsRead(senderId: String) {
+        val user = supabase.auth.currentUserOrNull() ?: return
+        try {
+            supabase.from("messages").update(
+                mapOf("is_read" to true)
+            ) {
+                filter {
+                    eq("receiver_id", user.id)
+                    eq("sender_id", senderId)
+                    eq("is_read", false)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun getDriverLocation(driverId: String): com.collins.todo.data.Models.DriverLocation? {
         return try {
             supabase.from("driver_locations").select {

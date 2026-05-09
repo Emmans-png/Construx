@@ -24,6 +24,11 @@ import com.collins.todo.data.Models.Message
 import com.collins.todo.data.repository.ConstructionRepository
 import com.collins.todo.data.repository.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,12 +45,35 @@ fun DriverMessagesScreen(onBack: () -> Unit) {
         scope.launch {
             isLoading = true
             messages = repository.getMessagesForUser()
+            
+            // Mark all messages as read once viewed
+            messages.filter { it.receiverId == SupabaseClient.client.auth.currentUserOrNull()?.id }
+                .map { it.senderId }
+                .distinct()
+                .forEach { senderId ->
+                    repository.markMessagesAsRead(senderId)
+                }
+
             isLoading = false
         }
     }
 
     LaunchedEffect(Unit) {
         refreshMessages()
+        
+        // Setup realtime for instant message updates
+        val channel = SupabaseClient.client.channel("driver_messages_realtime")
+        val flow = channel.postgresChangeFlow<io.github.jan.supabase.realtime.PostgresAction>(schema = "public") {
+            table = "messages"
+        }
+        
+        flow.onEach {
+            refreshMessages()
+        }.launchIn(scope)
+        
+        scope.launch {
+            channel.subscribe()
+        }
     }
 
     if (selectedMessageForReply != null) {

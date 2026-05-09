@@ -18,6 +18,7 @@ import com.collins.todo.ui.screens.pages.home.ProjectFormScreen
 import com.collins.todo.ui.screens.pages.about.AboutScreen
 import com.collins.todo.ui.screens.pages.contact.ContactScreen
 import com.collins.todo.ui.screens.pages.procurement.ProcurementScreen
+import com.collins.todo.ui.screens.pages.procurement.ManagerMessagesScreen
 import com.collins.todo.ui.screens.pages.roi.ROIAnalyzerScreen
 import com.collins.todo.ui.screens.todoform.TodoForm
 import com.collins.todo.ui.screens.todoform.TodoViewModel
@@ -178,6 +179,7 @@ fun AppNavigation() {
                 onNavigateToTeam = { navController.navigate("team") },
                 onNavigateToAnalytics = { navController.navigate(ROUTES.ROI_ANALYZER) },
                 onNavigateToFleet = { navController.navigate(ROUTES.MANAGER_FLEET) },
+                onNavigateToMessages = { navController.navigate(ROUTES.MANAGER_MESSAGES) },
                 onNavigateToProfile = { navController.navigate(ROUTES.PROFILE) },
                 onAddProject = { navController.navigate(ROUTES.createProjectFormRoute()) },
                 onEditProject = { project ->
@@ -219,6 +221,11 @@ fun AppNavigation() {
         }
         composable(ROUTES.DRIVER_MESSAGES) {
             DriverMessagesScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(ROUTES.MANAGER_MESSAGES) {
+            ManagerMessagesScreen(
                 onBack = { navController.popBackStack() }
             )
         }
@@ -293,6 +300,9 @@ fun AppNavigation() {
                 },
                 onNavigateToLiveTracking = { orderId ->
                     navController.navigate("${ROUTES.TRACKING}/$orderId/true")
+                },
+                onNavigateToMessages = {
+                    navController.navigate(ROUTES.MANAGER_MESSAGES)
                 }
             )
         }

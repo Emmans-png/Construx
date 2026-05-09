@@ -44,6 +44,7 @@ fun TransporterConsole(
     val orders by viewModel.orders
     val drivers by viewModel.drivers
     val isLoading by viewModel.isLoading
+    val unreadMessages by viewModel.unreadMessageCount
     val activeOrder = orders.find { it.status == "Ongoing" || it.status == "Dispatched" || it.status == "Arrived" || it.status == "Unloading" }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -252,8 +253,19 @@ fun TransporterConsole(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToMessages) {
-                        Icon(Icons.AutoMirrored.Filled.Message, "Messages")
+                    IconButton(onClick = {
+                        viewModel.clearUnreadCount()
+                        onNavigateToMessages()
+                    }) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadMessages > 0) {
+                                    Badge { Text(unreadMessages.toString()) }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Message, "Messages")
+                        }
                     }
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Default.AccountCircle, "Profile")
@@ -293,12 +305,23 @@ fun TransporterConsole(
                 }
                 
                 FloatingActionButton(
-                    onClick = onNavigateToMessages,
+                    onClick = {
+                        viewModel.clearUnreadCount()
+                        onNavigateToMessages()
+                    },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     shape = CircleShape,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, "Dispatch Chat")
+                    BadgedBox(
+                        badge = {
+                            if (unreadMessages > 0) {
+                                Badge { Text(unreadMessages.toString()) }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, "Dispatch Chat")
+                    }
                 }
             }
         },

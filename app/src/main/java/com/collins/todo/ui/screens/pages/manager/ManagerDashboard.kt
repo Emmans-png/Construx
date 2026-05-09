@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
@@ -43,6 +44,7 @@ fun ManagerDashboard(
     onNavigateToTeam: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToFleet: () -> Unit,
+    onNavigateToMessages: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onAddProject: () -> Unit,
     onEditProject: (ConstructionProject) -> Unit
@@ -51,6 +53,7 @@ fun ManagerDashboard(
     val orders by viewModel.orders
     val drivers by viewModel.drivers
     val isLoading by viewModel.isLoading
+    val unreadMessages by viewModel.unreadMessageCount
     val repository = remember { com.collins.todo.data.repository.ConstructionRepository() }
     val scope = rememberCoroutineScope()
     val procurementViewModel: ProcurementViewModel = viewModel()
@@ -60,6 +63,20 @@ fun ManagerDashboard(
             CenterAlignedTopAppBar(
                 title = { Text("MANAGER DASHBOARD", fontWeight = FontWeight.Black) },
                 actions = {
+                    IconButton(onClick = {
+                        viewModel.clearUnreadCount()
+                        onNavigateToMessages()
+                    }) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadMessages > 0) {
+                                    Badge { Text(unreadMessages.toString()) }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, "Messages")
+                        }
+                    }
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Default.Person, "Profile")
                     }

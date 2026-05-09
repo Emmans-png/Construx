@@ -29,6 +29,9 @@ class ProcurementViewModel : ViewModel() {
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
+    private val _unreadMessageCount = mutableStateOf(0)
+    val unreadMessageCount: State<Int> = _unreadMessageCount
+
     // UI State for Dialogs
     var showAddOrder by mutableStateOf(false)
         private set
@@ -59,7 +62,24 @@ class ProcurementViewModel : ViewModel() {
 
     init {
         fetchOrders()
+        fetchUnreadCount()
         setupRealtime()
+    }
+
+    fun fetchUnreadCount() {
+        viewModelScope.launch {
+            try {
+                val user = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
+                val messages = repository.getMessagesForUser()
+                _unreadMessageCount.value = messages.count { it.receiverId == user.id && !it.isRead }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun clearUnreadCount() {
+        _unreadMessageCount.value = 0
     }
 
     fun onAddOrderClick(projectId: Int? = null) {
@@ -145,7 +165,9 @@ class ProcurementViewModel : ViewModel() {
             isSaving = true
             statusMessage = "Saving order..."
             try {
-                val orgId = project.organizationId
+                // Ensure organizationId is a valid UUID string or null (prevent empty string errors)
+                val orgId = if (project.organizationId.isNullOrBlank()) null else project.organizationId
+
                 val newOrder = MaterialOrder(
                     projectId = project.id!!,
                     materialName = materialName,
@@ -179,13 +201,18 @@ class ProcurementViewModel : ViewModel() {
     }
 
     private fun setupRealtime() {
-        val channel = SupabaseClient.client.channel("material_orders_sync")
-        val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
-            table = "material_orders"
-        }
+        val channel = SupabaseClient.client.channel("procurement_sync")
         
-        flow.onEach { 
-            fetchOrders() // Simple refresh on any change
+        channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "material_orders"
+        }.onEach { 
+            fetchOrders() 
+        }.launchIn(viewModelScope)
+
+        channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "messages"
+        }.onEach {
+            fetchUnreadCount()
         }.launchIn(viewModelScope)
         
         viewModelScope.launch {

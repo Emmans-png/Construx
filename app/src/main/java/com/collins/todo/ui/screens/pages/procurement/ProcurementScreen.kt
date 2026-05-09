@@ -25,16 +25,18 @@ import com.collins.todo.data.Models.MaterialOrder
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProcurementScreen(
     onBack: () -> Unit,
     onNavigateToLiveTracking: (Int) -> Unit,
+    onNavigateToMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProcurementViewModel = viewModel()
     val orders by viewModel.orders
     val isLoading by viewModel.isLoading
+    val unreadMessages by viewModel.unreadMessageCount
 
     Scaffold(
         topBar = {
@@ -53,8 +55,16 @@ fun ProcurementScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.onSendMessageClick() }) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, "Message Driver", tint = MaterialTheme.colorScheme.primary)
+                    IconButton(onClick = onNavigateToMessages) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadMessages > 0) {
+                                    Badge { Text(unreadMessages.toString()) }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, "Message Driver", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -77,10 +87,6 @@ fun ProcurementScreen(
             AddOrderDialog(
                 viewModel = viewModel
             )
-        }
-
-        if (viewModel.showSendMessage) {
-            SendMessageDialog(viewModel = viewModel)
         }
 
         viewModel.editingOrder?.let { order ->
@@ -152,57 +158,6 @@ fun ProcurementScreen(
             }
         }
     }
-}
-
-@Composable
-fun SendMessageDialog(viewModel: ProcurementViewModel) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    AlertDialog(
-        onDismissRequest = { viewModel.onDismissSendMessage() },
-        title = { Text("Send Message to Driver", color = Color.White) },
-        containerColor = MaterialTheme.colorScheme.surface,
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box {
-                    OutlinedButton(
-                        onClick = { expanded = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        val drivers = viewModel.drivers.value
-                        Text(drivers.find { it.id == viewModel.selectedDriverId }?.username ?: "Select Driver")
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        viewModel.drivers.value.forEach { driver ->
-                            DropdownMenuItem(
-                                text = { Text(driver.username) },
-                                onClick = {
-                                    viewModel.selectedDriverId = driver.id
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                TextField(
-                    value = viewModel.messageContent,
-                    onValueChange = { viewModel.messageContent = it },
-                    label = { Text("Message Content") },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    maxLines = 5
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = viewModel.selectedDriverId != null && viewModel.messageContent.isNotBlank(),
-                onClick = { viewModel.sendMessage() }
-            ) { Text("Send") }
-        },
-        dismissButton = { TextButton(onClick = { viewModel.onDismissSendMessage() }) { Text("Cancel") } }
-    )
 }
 
 @Composable

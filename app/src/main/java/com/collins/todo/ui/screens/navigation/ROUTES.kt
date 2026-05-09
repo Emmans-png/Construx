@@ -18,6 +18,7 @@ object ROUTES {
     const val CONTACT = "contact"
     const val SIGNUP_SUCCESS = "signup_success"
     const val DRIVER_MESSAGES = "driver_messages"
+    const val MANAGER_MESSAGES = "manager_messages"
     const val MANAGER_FLEET = "manager_fleet"
     const val PROJECT_FORM = "project_form?projectId={projectId}"
     const val TODO_FORM = "todo_form?todoId={todoId}"
