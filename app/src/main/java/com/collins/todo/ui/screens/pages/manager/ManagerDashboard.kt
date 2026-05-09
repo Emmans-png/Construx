@@ -410,6 +410,8 @@ fun OrderFlowItem(
                     "Delivered" -> Color(0xFF4CAF50).copy(alpha = 0.1f)
                     "Dispatched" -> Color(0xFF2196F3).copy(alpha = 0.1f)
                     "Ongoing" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    "Arrived" -> Color(0xFF9C27B0).copy(alpha = 0.1f)
+                    "Unloading" -> Color(0xFFFF5722).copy(alpha = 0.1f)
                     else -> Color(0xFFFFA000).copy(alpha = 0.1f)
                 },
                 shape = RoundedCornerShape(16.dp)
@@ -420,6 +422,8 @@ fun OrderFlowItem(
                         "Delivered" -> Color(0xFF4CAF50)
                         "Dispatched" -> Color(0xFF2196F3)
                         "Ongoing" -> MaterialTheme.colorScheme.primary
+                        "Arrived" -> Color(0xFF9C27B0)
+                        "Unloading" -> Color(0xFFFF5722)
                         else -> Color(0xFFFFA000)
                     },
                     fontSize = 9.sp,

@@ -173,7 +173,7 @@ fun EditOrderDialog(
     var status by remember { mutableStateOf(order.status) }
     var earnings by remember { mutableStateOf(order.earnings?.toString() ?: "") }
     
-    val statuses = listOf("Pending", "Dispatched", "Ongoing", "Delivered")
+    val statuses = listOf("Pending", "Dispatched", "Ongoing", "Arrived", "Unloading", "Delivered")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -350,6 +350,8 @@ fun OrderCard(
                         "Delivered" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
                         "Dispatched" -> Color(0xFF2196F3).copy(alpha = 0.2f)
                         "Ongoing" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        "Arrived" -> Color(0xFF9C27B0).copy(alpha = 0.2f)
+                        "Unloading" -> Color(0xFFFF5722).copy(alpha = 0.2f)
                         else -> Color(0xFFFFA000).copy(alpha = 0.2f)
                     },
                     shape = RoundedCornerShape(4.dp)
@@ -360,6 +362,8 @@ fun OrderCard(
                             "Delivered" -> Color(0xFF4CAF50)
                             "Dispatched" -> Color(0xFF2196F3)
                             "Ongoing" -> MaterialTheme.colorScheme.primary
+                            "Arrived" -> Color(0xFF9C27B0)
+                            "Unloading" -> Color(0xFFFF5722)
                             else -> Color(0xFFFFA000)
                         },
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -369,7 +373,7 @@ fun OrderCard(
                 }
             }
             
-            if (order.status == "Ongoing" || order.status == "Dispatched") {
+            if (order.status == "Ongoing" || order.status == "Dispatched" || order.status == "Arrived" || order.status == "Unloading") {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onTrack,

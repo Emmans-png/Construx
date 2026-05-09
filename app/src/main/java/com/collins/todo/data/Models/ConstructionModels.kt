@@ -35,7 +35,7 @@ data class MaterialOrder(
     val unit: String,
     @SerialName("unit_price")
     val unitPrice: Double,
-    val status: String = "Pending", // Pending, Dispatched, Delivered, Ongoing
+    val status: String = "Pending", // Pending, Dispatched, Ongoing, Arrived, Unloading, Delivered
     @SerialName("required_stage")
     val requiredStage: String,
     @SerialName("supplier_name")

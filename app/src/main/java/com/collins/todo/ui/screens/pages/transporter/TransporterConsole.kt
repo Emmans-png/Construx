@@ -367,6 +367,7 @@ fun TransporterConsole(
                         val isTakenByMe = activeOrder.transporterId == currentUserId || activeOrder.transporterId == null
                         
                         QuickActionBar(
+                            currentStatus = activeOrder.status,
                             onArrived = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Arrived") } },
                             onUnloading = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Unloading") } },
                             onPOD = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Delivered") } },
@@ -631,13 +632,38 @@ fun ActiveLoadCard(order: MaterialOrder, onGetDirections: () -> Unit) {
 }
 
 @Composable
-fun QuickActionBar(onArrived: () -> Unit, onUnloading: () -> Unit, onPOD: () -> Unit, onTrack: () -> Unit, isTakenByMe: Boolean) {
+fun QuickActionBar(
+    currentStatus: String,
+    onArrived: () -> Unit,
+    onUnloading: () -> Unit,
+    onPOD: () -> Unit,
+    onTrack: () -> Unit,
+    isTakenByMe: Boolean
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (isTakenByMe) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickActionButton("ARRIVED", Icons.Default.LocationOn, Modifier.weight(1f), onArrived)
-                QuickActionButton("UNLOADING", Icons.Default.Unarchive, Modifier.weight(1f), onUnloading)
-                QuickActionButton("POD", Icons.Default.PhotoCamera, Modifier.weight(1f), onPOD)
+                QuickActionButton(
+                    label = "ARRIVED",
+                    icon = Icons.Default.LocationOn,
+                    modifier = Modifier.weight(1f),
+                    isActive = currentStatus == "Arrived",
+                    onClick = onArrived
+                )
+                QuickActionButton(
+                    label = "UNLOADING",
+                    icon = Icons.Default.Unarchive,
+                    modifier = Modifier.weight(1f),
+                    isActive = currentStatus == "Unloading",
+                    onClick = onUnloading
+                )
+                QuickActionButton(
+                    label = "POD",
+                    icon = Icons.Default.PhotoCamera,
+                    modifier = Modifier.weight(1f),
+                    isActive = currentStatus == "Delivered",
+                    onClick = onPOD
+                )
             }
         }
         
@@ -655,20 +681,36 @@ fun QuickActionBar(onArrived: () -> Unit, onUnloading: () -> Unit, onPOD: () -> 
 }
 
 @Composable
-fun QuickActionButton(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+fun QuickActionButton(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier,
+    isActive: Boolean = false,
+    onClick: () -> Unit
+) {
     Surface(
         onClick = onClick,
         modifier = modifier.height(80.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp)
+        color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        border = if (isActive) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                icon,
+                null,
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.height(4.dp))
-            Text(label, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(
+                label,
+                color = if (isActive) MaterialTheme.colorScheme.primary else Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
