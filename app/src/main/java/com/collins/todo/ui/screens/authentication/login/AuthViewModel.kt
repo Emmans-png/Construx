@@ -128,6 +128,7 @@ class AuthViewModel : ViewModel() {
                     this.email = trimmedEmail
                     this.password = trimmedPassword
                 }
+                fetchProfile()
                 onSuccess()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -276,6 +277,16 @@ class AuthViewModel : ViewModel() {
         email = ""
         password = ""
         confirmPassword = ""
+        _currentUserProfile.value = null
+    }
+
+    fun clearInputFields() {
+        email = ""
+        password = ""
+        confirmPassword = ""
+        isLoading = false
+        errorMessage = null
+        isSuccess = false
     }
 
     fun getUserRole(): String {

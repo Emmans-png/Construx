@@ -94,7 +94,7 @@ fun AppNavigation() {
                 onLoginSuccess = {
                     val role = authViewModel.getUserRole()
                     val destination = if (role == "Transporter") ROUTES.TRANSPORTER_HOME else ROUTES.HOME
-                    authViewModel.clearState()
+                    authViewModel.clearInputFields()
                     navController.navigate(destination) {
                         popUpTo(ROUTES.LOGIN) { inclusive = true }
                     }
@@ -148,7 +148,7 @@ fun AppNavigation() {
                 onContinue = {
                     val role = authViewModel.getUserRole()
                     val destination = if (role == "Transporter") ROUTES.TRANSPORTER_HOME else ROUTES.HOME
-                    authViewModel.clearState()
+                    authViewModel.clearInputFields()
                     navController.navigate(destination) {
                         popUpTo(ROUTES.SIGNUP_SUCCESS) { inclusive = true }
                     }

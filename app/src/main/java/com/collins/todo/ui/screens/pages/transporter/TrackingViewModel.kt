@@ -76,30 +76,28 @@ class TrackingViewModel : ViewModel() {
         }
     }
 
-    private fun startLiveUpdates(orderId: Int) {
-        val channel = com.collins.todo.data.repository.SupabaseClient.client.channel("tracking_$orderId")
+    private fun startLiveUpdates(order_id: Int) {
+        val channel = com.collins.todo.data.repository.SupabaseClient.client.channel("tracking_$order_id")
         realtimeChannel = channel
-        val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+        
+        // Listen for ANY change in live_tracking for this order
+        channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "live_tracking"
-            // Use function call instead of assignment if it's private but has a builder method
-            // In 3.x it might be filter = PostgresChangeFilter(...) or similar if not a simple string
-            // Actually, let's try removing it and filtering manually if we can't find the syntax
-            // OR try the string format if it's supposed to be like this
-        }
-
-        flow.onEach { action ->
-            val record = when (action) {
+        }.onEach { action ->
+            val data = when (action) {
                 is PostgresAction.Update -> action.record
                 is PostgresAction.Insert -> action.record
                 else -> null
             }
 
-            record?.let { data ->
-                val recordOrderId = data["order_id"]?.jsonPrimitive?.intOrNull
-                if (recordOrderId == orderId) {
-                    val lat = data["latitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
-                    val lng = data["longitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
+            data?.let { record ->
+                val recordOrderId = record["order_id"]?.jsonPrimitive?.intOrNull
+                if (recordOrderId == order_id) {
+                    val lat = record["latitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
+                    val lng = record["longitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
                     val point = GeoPoint(lat, lng)
+                    
+                    println("DEBUG_MAP: Manager received live update: $lat, $lng")
                     _currentLocation.value = point
                     if (_pathPoints.isEmpty() || _pathPoints.last() != point) {
                         _pathPoints.add(point)

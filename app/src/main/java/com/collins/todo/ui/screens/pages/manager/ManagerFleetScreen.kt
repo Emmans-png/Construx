@@ -116,10 +116,10 @@ fun DriverFleetCard(driver: UserProfile, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(driver.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
+                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = if (!driver.vehiclePlate.isNullOrBlank()) "${driver.vehicleModel} (${driver.vehiclePlate})" else "No Vehicle",
+                        text = "Authorized Transporter",
                         color = MaterialTheme.colorScheme.tertiary,
                         fontSize = 12.sp
                     )
@@ -162,9 +162,8 @@ fun DriverDetailView(driver: UserProfile, location: DriverLocation?, onBackToFle
                 }
                 Spacer(Modifier.height(20.dp))
                 ProfileInfoRow(Icons.Default.Phone, "Phone", driver.phoneNumber ?: "N/A")
-                ProfileInfoRow(Icons.Default.LocalShipping, "Vehicle", "${driver.vehicleModel ?: "N/A"} (${driver.vehiclePlate ?: "N/A"})")
-                ProfileInfoRow(Icons.Default.LocalGasStation, "Last Fuel Level", "${driver.fuelLevel}%")
-                ProfileInfoRow(Icons.Default.Settings, "Next Service", "in ${driver.nextServiceKm} km")
+                ProfileInfoRow(Icons.Default.Email, "Email", driver.email)
+                ProfileInfoRow(Icons.Default.LocationOn, "Work Region", driver.location ?: "Nationwide")
             }
         }
 

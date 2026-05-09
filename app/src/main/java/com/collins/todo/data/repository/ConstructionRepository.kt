@@ -122,14 +122,15 @@ class ConstructionRepository {
     suspend fun getTransporterOrders(): List<MaterialOrder> {
         val user = supabase.auth.currentUserOrNull() ?: return emptyList()
         val profile = getUserProfile() ?: return emptyList()
+        val orgId = profile.organizationId ?: "none"
+        
         return try {
             supabase.from("material_orders").select {
                 filter {
-                    or {
-                        eq("transporter_id", user.id)
-                        // This allows the driver to see "Unassigned" orders in their organization
-                        eq("organization_id", profile.organizationId ?: "none")
-                    }
+                    // Only show orders belonging to the driver's organization
+                    eq("organization_id", orgId)
+                    
+                    // Filter out delivered or completed orders from the active list
                     neq("status", "Delivered")
                     neq("status", "Completed")
                 }

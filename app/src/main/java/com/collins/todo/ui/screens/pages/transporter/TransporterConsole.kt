@@ -362,17 +362,24 @@ fun TransporterConsole(
                     }
                     
                     item {
+                        val currentUserId = authViewModel.currentUserProfile?.id
+                        val isTakenByOther = activeOrder.transporterId != null && activeOrder.transporterId != currentUserId
+                        val isTakenByMe = activeOrder.transporterId == currentUserId || activeOrder.transporterId == null
+                        
                         QuickActionBar(
-                            onArrived = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Arrived") } },
-                            onUnloading = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Unloading") } },
-                            onPOD = { activeOrder.id?.let { viewModel.updateOrderStatus(it, "Delivered") } },
+                            onArrived = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Arrived") } },
+                            onUnloading = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Unloading") } },
+                            onPOD = { if (isTakenByMe) activeOrder.id?.let { viewModel.updateOrderStatus(it, "Delivered") } },
                             onTrack = { 
-                                if (activeOrder.status == "Dispatched") {
-                                    viewModel.showEstimateDialog = true 
-                                } else {
-                                    activeOrder.id?.let { onNavigateToTracking(it) }
+                                if (isTakenByMe) {
+                                    if (activeOrder.status == "Dispatched" || activeOrder.status == "Pending") {
+                                        viewModel.showEstimateDialog = true 
+                                    } else {
+                                        activeOrder.id?.let { onNavigateToTracking(it) }
+                                    }
                                 }
-                            }
+                            },
+                            isTakenByMe = isTakenByMe && !isTakenByOther
                         )
                     }
                 } else {
@@ -624,21 +631,25 @@ fun ActiveLoadCard(order: MaterialOrder, onGetDirections: () -> Unit) {
 }
 
 @Composable
-fun QuickActionBar(onArrived: () -> Unit, onUnloading: () -> Unit, onPOD: () -> Unit, onTrack: () -> Unit) {
+fun QuickActionBar(onArrived: () -> Unit, onUnloading: () -> Unit, onPOD: () -> Unit, onTrack: () -> Unit, isTakenByMe: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickActionButton("ARRIVED", Icons.Default.LocationOn, Modifier.weight(1f), onArrived)
-            QuickActionButton("UNLOADING", Icons.Default.Unarchive, Modifier.weight(1f), onUnloading)
-            QuickActionButton("POD", Icons.Default.PhotoCamera, Modifier.weight(1f), onPOD)
+        if (isTakenByMe) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                QuickActionButton("ARRIVED", Icons.Default.LocationOn, Modifier.weight(1f), onArrived)
+                QuickActionButton("UNLOADING", Icons.Default.Unarchive, Modifier.weight(1f), onUnloading)
+                QuickActionButton("POD", Icons.Default.PhotoCamera, Modifier.weight(1f), onPOD)
+            }
         }
+        
         Button(
             onClick = onTrack,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            colors = if (!isTakenByMe) ButtonDefaults.buttonColors(containerColor = Color.Gray) else ButtonDefaults.buttonColors()
         ) {
             Icon(Icons.Default.Navigation, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("TRACK MOVEMENT")
+            Text(if (isTakenByMe) "TRACK MOVEMENT" else "LOCKED (ALREADY TAKEN)")
         }
     }
 }

@@ -178,19 +178,20 @@ class TransporterViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val user = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
+                // Fetch the freshest profile from DB to ensure we are updating the latest data
                 val currentProfile = repository.getUserProfile()
                 if (currentProfile != null) {
                     val updated = currentProfile.copy(
-                        id = user.id, // Ensure we are updating the CORRECT user record
+                        id = user.id, // STICK TO THE CURRENT USER ID
                         fuelLevel = fuel, 
                         nextServiceKm = serviceKm,
                         vehiclePlate = if (!plate.isNullOrBlank()) plate else currentProfile.vehiclePlate,
                         vehicleModel = if (!model.isNullOrBlank()) model else currentProfile.vehicleModel
                     )
-                    println("DEBUG_VEHICLE: Saving health for ${user.id}: Plate=$plate, Fuel=$fuel")
+                    println("DEBUG_VEHICLE: Saving UNIQUE health for driver ${user.id}")
                     val result = repository.updateUserProfile(updated)
                     if (result != null) {
-                        authViewModel.fetchProfile() // Refresh global state to persist across login
+                        authViewModel.fetchProfile() // Sync with global Auth state
                     }
                 }
             } catch (e: Exception) {
@@ -206,11 +207,11 @@ class TransporterViewModel : ViewModel() {
                 val currentProfile = repository.getUserProfile()
                 if (currentProfile != null) {
                     val updated = currentProfile.copy(
-                        id = user.id, // Explicitly target this driver's ID
+                        id = user.id, // STICK TO THE CURRENT USER ID
                         vehiclePlate = vehiclePlate,
                         vehicleModel = vehicleModel
                     )
-                    println("DEBUG_VEHICLE: Registering unique vehicle for ${user.id}: $vehiclePlate")
+                    println("DEBUG_VEHICLE: Registering UNIQUE vehicle for driver ${user.id}")
                     val result = repository.updateUserProfile(updated)
                     if (result != null) {
                         authViewModel.fetchProfile()
