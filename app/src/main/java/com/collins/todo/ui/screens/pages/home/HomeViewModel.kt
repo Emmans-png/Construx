@@ -10,6 +10,7 @@ import com.collins.todo.data.Models.ConstructionProject
 import com.collins.todo.data.Models.MaterialOrder
 import com.collins.todo.data.repository.ConstructionRepository
 import com.collins.todo.data.repository.SupabaseClient
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
@@ -126,16 +127,14 @@ class HomeViewModel: ViewModel() {
     fun fetchOrders() {
         viewModelScope.launch {
             try {
-                // Fetch projects first to get IDs, then fetch orders for those projects
-                val userProjects = repository.getProjects()
-                val allOrders = mutableListOf<MaterialOrder>()
-                userProjects.forEach { project ->
-                    project.id?.let { id ->
-                        allOrders.addAll(repository.getOrdersByProject(id))
-                    }
-                }
-                _orders.value = allOrders.sortedByDescending { it.id }
+                // Direct fetch from Supabase to ensure all orders (even those with new status) are caught
+                val directOrders = SupabaseClient.client.from("material_orders")
+                    .select().decodeList<MaterialOrder>()
+                
+                _orders.value = directOrders.sortedByDescending { it.id ?: 0 }
+                println("DEBUG_HOME: Refreshed dashboard with ${directOrders.size} orders")
             } catch (e: Exception) {
+                println("ERROR_HOME: Failed to fetch orders: ${e.message}")
                 e.printStackTrace()
             }
         }
