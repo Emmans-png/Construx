@@ -118,7 +118,17 @@ class TransporterViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _orders.value = repository.getTransporterOrders()
+                val user = SupabaseClient.client.auth.currentUserOrNull()
+                val profile = repository.getUserProfile()
+                
+                // Fetch all orders where this driver is the transporter OR it's unassigned in their org
+                val allOrders = repository.getTransporterOrders()
+                
+                // Filter to ensure history ONLY shows what THIS driver has handled or is handling
+                // This prevents seeing other drivers' private trips
+                _orders.value = allOrders.filter { 
+                    it.transporterId == user?.id || it.status == "Pending" || it.status == "Dispatched"
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -167,16 +177,21 @@ class TransporterViewModel : ViewModel() {
     fun updateVehicleHealth(authViewModel: AuthViewModel, fuel: Int, serviceKm: Int, plate: String? = null, model: String? = null) {
         viewModelScope.launch {
             try {
+                val user = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
                 val currentProfile = repository.getUserProfile()
                 if (currentProfile != null) {
                     val updated = currentProfile.copy(
+                        id = user.id, // Ensure we are updating the CORRECT user record
                         fuelLevel = fuel, 
                         nextServiceKm = serviceKm,
-                        vehiclePlate = plate ?: currentProfile.vehiclePlate,
-                        vehicleModel = model ?: currentProfile.vehicleModel
+                        vehiclePlate = if (!plate.isNullOrBlank()) plate else currentProfile.vehiclePlate,
+                        vehicleModel = if (!model.isNullOrBlank()) model else currentProfile.vehicleModel
                     )
-                    repository.updateUserProfile(updated)
-                    authViewModel.fetchProfile() // Refresh the global state
+                    println("DEBUG_VEHICLE: Saving health for ${user.id}: Plate=$plate, Fuel=$fuel")
+                    val result = repository.updateUserProfile(updated)
+                    if (result != null) {
+                        authViewModel.fetchProfile() // Refresh global state to persist across login
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -187,24 +202,22 @@ class TransporterViewModel : ViewModel() {
     fun updateVehicleDetails(authViewModel: AuthViewModel) {
         viewModelScope.launch {
             try {
+                val user = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
                 val currentProfile = repository.getUserProfile()
                 if (currentProfile != null) {
                     val updated = currentProfile.copy(
+                        id = user.id, // Explicitly target this driver's ID
                         vehiclePlate = vehiclePlate,
                         vehicleModel = vehicleModel
                     )
-                    println("Attempting to save vehicle: Plate=$vehiclePlate, Model=$vehicleModel")
+                    println("DEBUG_VEHICLE: Registering unique vehicle for ${user.id}: $vehiclePlate")
                     val result = repository.updateUserProfile(updated)
                     if (result != null) {
-                        println("Vehicle details saved successfully!")
                         authViewModel.fetchProfile()
                         showVehicleSetupDialog = false
-                    } else {
-                        println("Failed to save: Repository returned null")
                     }
                 }
             } catch (e: Exception) {
-                println("ERROR saving vehicle details: ${e.message}")
                 e.printStackTrace()
             }
         }
