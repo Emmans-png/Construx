@@ -101,6 +101,12 @@ fun TrackingScreen(
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { mapView ->
+                    // Set default center if no location yet (prevents blank/blue screen)
+                    if (currentLocation == null && pathPoints.isEmpty()) {
+                        mapView.controller.setCenter(GeoPoint(-1.286389, 36.817223)) // Default to Nairobi or similar
+                        mapView.controller.setZoom(10.0)
+                    }
+
                     mapView.overlays.clear()
 
                     // Draw Path (History)
@@ -108,8 +114,13 @@ fun TrackingScreen(
                         val polyline = Polyline(mapView)
                         polyline.setPoints(pathPoints)
                         polyline.outlinePaint.color = android.graphics.Color.RED // Logistics Red
-                        polyline.outlinePaint.strokeWidth = 8f
+                        polyline.outlinePaint.strokeWidth = 10f
                         mapView.overlays.add(polyline)
+                        
+                        // If current location is null, center on the start of the path
+                        if (currentLocation == null) {
+                            mapView.controller.setCenter(pathPoints.last())
+                        }
                     }
 
                     // Draw Current Position
@@ -119,10 +130,15 @@ fun TrackingScreen(
                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         marker.title = if (isViewer) "Driver" else "My Truck"
                         
-                        // Custom Marker Icon (Optional - using default for now)
+                        // Custom Marker Icon
+                        marker.icon = context.getDrawable(org.osmdroid.library.R.drawable.marker_default)
+                        
                         mapView.overlays.add(marker)
 
-                        // Auto-center on current location
+                        // Auto-center and zoom if it's the first time
+                        if (mapView.zoomLevelDouble < 13.0) {
+                            mapView.controller.setZoom(16.0)
+                        }
                         mapView.controller.animateTo(point)
                     }
 

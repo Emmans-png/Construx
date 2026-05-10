@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.collins.todo.data.Models.UserProfile
 import com.collins.todo.data.Models.DriverLocation
 import com.collins.todo.data.repository.ConstructionRepository
+import com.collins.todo.data.repository.SupabaseClient
 import coil3.compose.AsyncImage
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -31,6 +32,13 @@ import org.osmdroid.views.overlay.Marker
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import android.content.Context
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,8 +57,39 @@ fun ManagerFleetScreen(
     }
 
     LaunchedEffect(selectedDriver) {
-        selectedDriver?.let {
-            driverLocation = repository.getDriverLocation(it.id)
+        selectedDriver?.let { driver ->
+            // Initial fetch of the last known location
+            driverLocation = repository.getDriverLocation(driver.id)
+            
+            // Listen for REAL-TIME updates to this driver's location
+            val channel = SupabaseClient.client.channel("fleet_tracking_${driver.id}")
+            channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "driver_locations"
+            }.onEach { action ->
+                val data = when (action) {
+                    is PostgresAction.Update -> action.record
+                    is PostgresAction.Insert -> action.record
+                    else -> null
+                }
+                
+                data?.let { record ->
+                    // Verify the update belongs to our selected driver
+                    if (record["driver_id"]?.jsonPrimitive?.content == driver.id) {
+                        val lat = record["latitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
+                        val lng = record["longitude"]?.jsonPrimitive?.doubleOrNull ?: return@onEach
+                        
+                        println("DEBUG_FLEET: Manager received live location for ${driver.username}: $lat, $lng")
+                        driverLocation = DriverLocation(
+                            driverId = driver.id,
+                            latitude = lat,
+                            longitude = lng,
+                            updatedAt = record["updated_at"]?.jsonPrimitive?.content ?: "Just now"
+                        )
+                    }
+                }
+            }.launchIn(this)
+            
+            channel.subscribe()
         }
     }
 

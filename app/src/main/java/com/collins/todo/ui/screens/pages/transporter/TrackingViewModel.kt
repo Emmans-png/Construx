@@ -80,7 +80,7 @@ class TrackingViewModel : ViewModel() {
         val channel = com.collins.todo.data.repository.SupabaseClient.client.channel("tracking_$order_id")
         realtimeChannel = channel
         
-        // Listen for ANY change in live_tracking for this order
+        // Listen specifically for this order's tracking updates
         channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "live_tracking"
         }.onEach { action ->
@@ -99,7 +99,9 @@ class TrackingViewModel : ViewModel() {
                     
                     println("DEBUG_MAP: Manager received live update: $lat, $lng")
                     _currentLocation.value = point
-                    if (_pathPoints.isEmpty() || _pathPoints.last() != point) {
+                    
+                    // Only add to path if it's a new unique point
+                    if (_pathPoints.isEmpty() || _pathPoints.last().latitude != lat || _pathPoints.last().longitude != lng) {
                         _pathPoints.add(point)
                     }
                 }
@@ -128,12 +130,17 @@ class TrackingViewModel : ViewModel() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
                     val geoPoint = GeoPoint(location.latitude, location.longitude)
-                    _currentLocation.value = geoPoint
-                    _pathPoints.add(geoPoint)
+                    
+                    // Only update if location actually moved significantly (e.g. 5 meters) or it's the first point
+                    val lastPoint = _currentLocation.value
+                    if (lastPoint == null || calculateDistance(lastPoint.latitude, lastPoint.longitude, location.latitude, location.longitude) > 5.0) {
+                        _currentLocation.value = geoPoint
+                        _pathPoints.add(geoPoint)
 
-                    // Sync to Supabase
-                    activeOrderId?.let { id ->
-                        syncLocation(id, location.latitude, location.longitude)
+                        // Sync to Supabase
+                        activeOrderId?.let { id ->
+                            syncLocation(id, location.latitude, location.longitude)
+                        }
                     }
                 }
             }
@@ -151,16 +158,25 @@ class TrackingViewModel : ViewModel() {
         }
     }
 
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+        return results[0]
+    }
+
     private fun syncLocation(orderId: Int, lat: Double, lng: Double) {
         viewModelScope.launch {
             try {
+                val timestamp = System.currentTimeMillis()
+                
                 // 1. Update Live Tracking (Realtime)
+                // Use upsert on order_id to keep ONLY the latest position for live views
                 com.collins.todo.data.repository.SupabaseClient.client.from("live_tracking").upsert(
                     buildJsonObject {
                         put("order_id", orderId)
                         put("latitude", lat)
                         put("longitude", lng)
-                        put("timestamp", System.currentTimeMillis())
+                        put("timestamp", timestamp)
                     }
                 )
 
@@ -170,7 +186,7 @@ class TrackingViewModel : ViewModel() {
                         put("order_id", orderId)
                         put("latitude", lat)
                         put("longitude", lng)
-                        put("timestamp", System.currentTimeMillis())
+                        put("timestamp", timestamp)
                     }
                 )
 

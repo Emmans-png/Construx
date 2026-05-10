@@ -39,6 +39,7 @@ class TransporterViewModel : ViewModel() {
     var showDriversDialog by mutableStateOf(false)
     var showNewTripDialog by mutableStateOf(false)
     var showEditVehicleHealth by mutableStateOf(false)
+    var selectedOrderId by mutableStateOf<Int?>(null)
 
     // Form states
     var estimatedDays by mutableStateOf("")
@@ -128,7 +129,7 @@ class TransporterViewModel : ViewModel() {
                 // This prevents seeing other drivers' private trips
                 _orders.value = allOrders.filter { 
                     it.transporterId == user?.id || it.status == "Pending" || it.status == "Dispatched"
-                }
+                }.sortedByDescending { it.id }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
