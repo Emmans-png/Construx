@@ -115,7 +115,9 @@ class ProfileViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 println("Error updating profile: ${e.message}")
-                _errorMessage.value = "Failed to update profile: ${e.message}"
+                // Extract a cleaner error message if possible
+                val cleanMessage = e.message?.lineSequence()?.firstOrNull() ?: "Unknown error"
+                _errorMessage.value = "Update failed: $cleanMessage"
             } finally {
                 _isLoading.value = false
             }
