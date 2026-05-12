@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.*
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.realtime.PostgresAction
@@ -20,8 +21,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import org.osmdroid.util.GeoPoint
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.postgrest.from
 
 class TrackingViewModel : ViewModel() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -46,7 +45,31 @@ class TrackingViewModel : ViewModel() {
         activeOrderId = orderId
         if (isViewer && orderId != null) {
             fetchLocationHistory(orderId)
+            fetchCurrentLocation(orderId) // Add this to get immediate state
             startLiveUpdates(orderId)
+        }
+    }
+
+    private fun fetchCurrentLocation(orderId: Int) {
+        viewModelScope.launch {
+            try {
+                val liveData = com.collins.todo.data.repository.SupabaseClient.client.from("live_tracking")
+                    .select {
+                        filter { eq("order_id", orderId) }
+                    }.decodeSingleOrNull<JsonObject>()
+                
+                liveData?.let { record ->
+                    val lat = record["latitude"]?.jsonPrimitive?.doubleOrNull ?: return@let
+                    val lng = record["longitude"]?.jsonPrimitive?.doubleOrNull ?: return@let
+                    val point = GeoPoint(lat, lng)
+                    _currentLocation.value = point
+                    if (_pathPoints.isEmpty() || _pathPoints.last().latitude != lat || _pathPoints.last().longitude != lng) {
+                        _pathPoints.add(point)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

@@ -85,7 +85,7 @@ fun TransporterHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatsCard("Active Trips", allOrders.count { it.status == "Ongoing" || it.status == "Dispatched" }.toString(), Icons.Default.LocalShipping, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                StatsCard("Total Earnings", "$${String.format("%,.0f", allOrders.filter { it.status == "Delivered" || it.status == "Completed" }.sumOf { it.quantity * 20 })}", Icons.Default.Payments, Color(0xFF4CAF50), Modifier.weight(1f))
+                StatsCard("Total Earnings", "$${String.format("%,.0f", authViewModel.currentUserProfile?.walletBalance ?: 0.0)}", Icons.Default.Payments, Color(0xFF4CAF50), Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(24.dp))

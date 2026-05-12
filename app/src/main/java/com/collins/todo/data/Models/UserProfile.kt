@@ -31,5 +31,7 @@ data class UserProfile(
     @SerialName("fuel_level")
     val fuelLevel: Int = 100,
     @SerialName("next_service_km")
-    val nextServiceKm: Int = 5000
+    val nextServiceKm: Int = 5000,
+    @SerialName("wallet_balance")
+    val walletBalance: Double = 0.0
 )

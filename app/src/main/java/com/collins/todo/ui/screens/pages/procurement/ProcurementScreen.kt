@@ -260,6 +260,7 @@ fun AddOrderDialog(
                 TextField(value = viewModel.materialName, onValueChange = { viewModel.materialName = it }, label = { Text("Material Name") })
                 TextField(value = viewModel.quantity, onValueChange = { viewModel.quantity = it }, label = { Text("Quantity") })
                 TextField(value = viewModel.unitPrice, onValueChange = { viewModel.unitPrice = it }, label = { Text("Unit Price ($)") })
+                TextField(value = viewModel.earnings, onValueChange = { viewModel.earnings = it }, label = { Text("Transport Earning ($)") })
                 TextField(value = viewModel.supplier, onValueChange = { viewModel.supplier = it }, label = { Text("Supplier") })
                 
                 Text("Required Stage", color = Color.White, fontSize = 12.sp)
@@ -331,6 +332,9 @@ fun OrderCard(
                     Text(order.materialName, color = Color.White, fontWeight = FontWeight.Bold)
                     Text("Supplier: ${order.supplierName}", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
                     Text("${order.quantity} ${order.unit} @ $${order.unitPrice}", color = Color.White, fontSize = 14.sp)
+                    if (order.earnings != null && order.earnings > 0) {
+                        Text("Transport: $${order.earnings}", color = Color(0xFF4CAF50), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                     if (order.estimatedDays != null) {
                         Text("ETA: ${order.estimatedDays} days", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }

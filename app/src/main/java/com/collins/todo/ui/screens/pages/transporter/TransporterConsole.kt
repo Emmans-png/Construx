@@ -367,7 +367,7 @@ fun TransporterConsole(
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TransporterStatCard("Total Trips", "${sortedOrders.size}", Icons.Default.Route, Modifier.weight(1f))
-                        TransporterStatCard("Earnings", "$${String.format(java.util.Locale.getDefault(), "%,.0f", sortedOrders.filter { it.status == "Delivered" || it.status == "Completed" }.sumOf { it.earnings ?: 0.0 })}", Icons.Default.Payments, Modifier.weight(1f))
+                        TransporterStatCard("Earnings", "$${String.format(java.util.Locale.getDefault(), "%,.0f", authViewModel.currentUserProfile?.walletBalance ?: 0.0)}", Icons.Default.Payments, Modifier.weight(1f))
                     }
                 }
 

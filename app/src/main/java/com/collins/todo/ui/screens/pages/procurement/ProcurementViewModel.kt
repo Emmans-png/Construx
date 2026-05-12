@@ -52,6 +52,7 @@ class ProcurementViewModel : ViewModel() {
     var materialName by mutableStateOf("")
     var quantity by mutableStateOf("")
     var unitPrice by mutableStateOf("")
+    var earnings by mutableStateOf("")
     var supplier by mutableStateOf("")
     var requiredStage by mutableStateOf("Foundation")
     var projects = mutableStateOf<List<ConstructionProject>>(emptyList())
@@ -97,6 +98,7 @@ class ProcurementViewModel : ViewModel() {
         materialName = ""
         quantity = ""
         unitPrice = ""
+        earnings = ""
         supplier = ""
         requiredStage = "Foundation"
     }
@@ -174,6 +176,7 @@ class ProcurementViewModel : ViewModel() {
                     quantity = quantity.toDoubleOrNull() ?: 0.0,
                     unit = "Units",
                     unitPrice = unitPrice.toDoubleOrNull() ?: 0.0,
+                    earnings = earnings.toDoubleOrNull() ?: 0.0,
                     requiredStage = requiredStage,
                     supplierName = supplier,
                     status = "Pending",

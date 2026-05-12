@@ -144,6 +144,20 @@ class TransporterViewModel : ViewModel() {
                 val user = SupabaseClient.client.auth.currentUserOrNull()
                 val currentOrder = _orders.value.find { it.id == orderId } ?: return@launch
                 
+                // If moving to Unloading, update driver's wallet
+                if (newStatus == "Unloading" && currentOrder.status != "Unloading" && currentOrder.status != "Delivered" && currentOrder.status != "Completed") {
+                    val earnings = currentOrder.earnings ?: 0.0
+                    if (earnings > 0) {
+                        val profile = repository.getUserProfile()
+                        if (profile != null) {
+                            val updatedProfile = profile.copy(
+                                walletBalance = profile.walletBalance + earnings
+                            )
+                            repository.updateUserProfile(updatedProfile)
+                        }
+                    }
+                }
+
                 repository.updateMaterialOrder(
                     currentOrder.copy(
                         status = newStatus,
